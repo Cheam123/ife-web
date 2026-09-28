@@ -13,9 +13,14 @@ use Illuminate\Http\Request;
 use App\Models\Leads;
 use App\Models\States;
 use App\Models\Cities;
+use App\Models\IFEReport;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Jobs\FirebaseNotification;
+use App\Jobs\RefreshOutletRecommendations;
+use App\Services\OrderService;
+use App\Services\Recommendation\RecommendationService;
 use Log;
 use Throwable;
 
@@ -120,8 +125,7 @@ class LeadController extends Controller
                 'postcode'              => $lead->postcode,
                 'remarks'               => $lead->remark,
                 'created_at'            => $lead->created_at->toDateString(),
-                
-                ];
+            ] + $this->outletProfile($lead);
         });
         $data['pagination']    = [
             'total'         => $leads->total(),
@@ -141,12 +145,12 @@ class LeadController extends Controller
                 return $this->response_failed('Lead ID is required.');
             }
 
-            $lead = Leads::with(['documentUploads', 'tasks'])->find($leadId);
+            $lead = Leads::with(['documentUploads', 'tasks'])->visibleTo($request->user())->find($leadId);
             if (!$lead) {
-                return $this->response_failed('Lead not found.');
+                return $this->response_failed('We could not find this outlet.');
             }
 
-            $data = [
+            $data = $this->outletProfile($lead) + [
                 'id'                    => $lead->id,
                 'name'                  => $lead->name,
                 'mobile'                => $lead->mobile,
@@ -187,10 +191,10 @@ class LeadController extends Controller
             return $this->response_failed('Lead ID is required.');
         }
 
-        $lead = Leads::with('documentUploads')->find($leadId);
+        $lead = Leads::with('documentUploads')->visibleTo($request->user())->find($leadId);
 
         if (!$lead) {
-            return $this->response_failed('Lead not found.');
+            return $this->response_failed('We could not find this outlet.');
         }
 
         $data = Helper::media_documents_array($lead->documentUploads);
@@ -204,9 +208,9 @@ class LeadController extends Controller
             return $this->response_failed('Lead ID is required.');
         }
 
-        $lead = Leads::with('tasks')->find($leadId);
+        $lead = Leads::with('tasks')->visibleTo($request->user())->find($leadId);
         if (!$lead) {
-            return $this->response_failed('Lead not found.');
+            return $this->response_failed('We could not find this outlet.');
         }
 
         $data = [];
@@ -247,6 +251,9 @@ class LeadController extends Controller
                 'id',
                 'name'
             ),
+            // Outlet profile pickers.
+            'size_bands'        => collect(Leads::SIZE_BANDS)->map(fn ($label, $value) => ['value' => $value, 'label' => $label])->values()->all(),
+            'segments'          => collect(Leads::SEGMENTS)->map(fn ($label, $value) => ['value' => $value, 'label' => $label])->values()->all(),
         ];
 
         return $this->response_success($data, 'Filter options retrieved successfully.');
@@ -258,17 +265,17 @@ class LeadController extends Controller
         $user = $request->user();
 
         if (!$user->can('create_lead')) {
-            $this->response_failed('You do not have permission to create a lead.');
+            return $this->response_failed('You do not have permission to create a lead.');
         }
 
         $validatedData = $request->validated();
 
         DB::beginTransaction();
         try {
-            $lead = Leads::create([
-                'receiving_date'    => $validatedData['receive_date'], 
-                'name'              => $validatedData['name'],           
-                'mobile'            => $validatedData['mobile'],         
+            $lead = new Leads([
+                'receiving_date'    => $validatedData['receive_date'],
+                'name'              => $validatedData['name'],
+                'mobile'            => $validatedData['mobile'],
                 'belong_to'         => $user->id,
                 'assign_to'         => null,
                 'hq_checker'        => $user->seesAllRecords() ? $user->id : null,
@@ -281,9 +288,19 @@ class LeadController extends Controller
                 'state_id'          => $validatedData['state_id'] ?? null,
                 'city_id'           => $validatedData['city_id'] ?? null,
                 'postcode'          => $validatedData['postcode'] ?? null,
-                'remark'            => $validatedData['remark'] ?? null, 
+                'remark'            => $validatedData['remark'] ?? null,
+                'size_band'         => $validatedData['size_band'] ?? null,
+                'seats'             => $validatedData['seats'] ?? null,
+                'segment'           => $validatedData['segment'] ?? null,
             ]);
-    
+
+            if ($request->has('gps') && ($error = $lead->applyLocationStamp($request->input('gps')))) {
+                DB::rollBack();
+                return $this->response_failed('Validation failed.', ['gps' => $error]);
+            }
+
+            $lead->save();
+
             if ($request->hasFile('file')) {
                 $this->upload($request, $lead->id);
             }
@@ -320,13 +337,14 @@ class LeadController extends Controller
 
         DB::beginTransaction();
         try {
-            $lead = Leads::findOrFail($validatedData['id']);
-            $lead->update([
-                'receiving_date'    => $validatedData['receive_date'], 
-                'name'              => $validatedData['name'],           
-                'mobile'            => $validatedData['mobile'],         
-                'belong_to'         => $user->id,
-                'assign_to'         => null,
+            // belong_to (creator) and assign_to (latest subscriber) are not
+            // the editor's to change: resetting them used to hide the lead
+            // from the rep it belongs to.
+            $lead = Leads::visibleTo($user)->findOrFail($validatedData['id']);
+            $lead->fill([
+                'receiving_date'    => $validatedData['receive_date'],
+                'name'              => $validatedData['name'],
+                'mobile'            => $validatedData['mobile'],
                 'business_name'     => $validatedData['business_name'] ?? null,
                 'customer_id'       => $validatedData['customer_id'] ?? null,
                 'source'            => $validatedData['leadsource'] ?? null,
@@ -337,7 +355,18 @@ class LeadController extends Controller
                 'city_id'           => $validatedData['city_id'] ?? null,
                 'postcode'          => $validatedData['postcode'] ?? null,
                 'remark'            => $validatedData['remark'] ?? null,
+                'size_band'         => $validatedData['size_band'] ?? null,
+                'seats'             => $validatedData['seats'] ?? null,
+                'segment'           => $validatedData['segment'] ?? null,
             ]);
+
+            // Absent: keep the saved location. Present (even empty): replace it.
+            if ($request->has('gps') && ($error = $lead->applyLocationStamp($request->input('gps')))) {
+                DB::rollBack();
+                return $this->response_failed('Validation failed.', ['gps' => $error]);
+            }
+
+            $lead->save();
 
             if ($request->has('deleted_attachment_ids')) {
                 $idsToDelete = $request->input('deleted_attachment_ids');
@@ -362,22 +391,11 @@ class LeadController extends Controller
             }
 
             DB::commit();
-    
-            // if ($request->hasFile('file')) {
-            //     // Delete old files
-            //     foreach ($lead->documentUploads as $upload) {
-            //         if (file_exists($upload->getFileFullPathAttribute())) {
-            //             unlink($upload->getFileFullPathAttribute());
-            //         }
-            //         $upload->delete();
-            //     }
-    
-            //     // Upload new file
-            //     $this->upload($request, $lead->id);
-            // }
-    
-            DB::commit();
-    
+
+            if ($lead->wasChanged(['size_band', 'seats', 'segment', 'business_category'])) {
+                RefreshOutletRecommendations::dispatch([$lead->id]);
+            }
+
             return $this->response_success(['lead' => $lead], 'Lead updated successfully.');
 
         } catch (Throwable $e) {
@@ -389,6 +407,130 @@ class LeadController extends Controller
             return $this->response_failed('Failed to update lead: ' . $f->getMessage());
         }
 
+    }
+
+    /**
+     * Visits (IFE reports) made at this outlet, newest first. Everyone who
+     * can see the outlet sees all of its visits, the same as its tasks.
+     */
+    public function getLeadVisits(Request $request)
+    {
+        $lead = $this->visibleLead($request);
+        if (!$lead) {
+            return $this->response_failed('We could not find this outlet.');
+        }
+
+        $visits = $lead->visits()->with('createdBy:id,name')->limit(100)->get();
+
+        return $this->response_success([
+            'visits' => $visits->map(fn (IFEReport $visit) => [
+                'id'                  => $visit->id,
+                'visited_at'          => $visit->created_at->toDateTimeString(),
+                'visited_by'          => optional($visit->createdBy)->name,
+                'status'              => $visit->status,
+                'problem_description' => $visit->problem_description,
+                'support_required'    => $visit->support_required,
+                'pic_name'            => $visit->pic_name,
+                'next_followup_date'  => $visit->next_followup_date,
+                'next_followup_plan'  => $visit->next_followup_plan,
+                'task_id'             => $visit->task_id,
+            ])->values(),
+        ], 'Lead visits retrieved successfully.');
+    }
+
+    /** Orders this outlet placed, newest first (cancelled ones included, flagged). */
+    public function getLeadOrders(Request $request)
+    {
+        $lead = $this->visibleLead($request);
+        if (!$lead) {
+            return $this->response_failed('We could not find this outlet.');
+        }
+
+        $orders = $lead->orders()->with(['lines.product', 'createdBy:id,name'])->limit(100)->get();
+
+        return $this->response_success([
+            'currency' => config('ife.currency', 'RM'),
+            'orders'   => $orders->map->toSummary()->values(),
+        ], 'Lead orders retrieved successfully.');
+    }
+
+    /**
+     * Records an order for the outlet.
+     * Body: lead_id, lines [{product_id, quantity}] (array or JSON string),
+     *       order_date (Y-m-d, optional, not in the future), remark (optional)
+     */
+    public function addLeadOrder(Request $request, OrderService $orders)
+    {
+        $user = $request->user();
+        if (!$user->can('record_order')) {
+            return $this->response_failed('Only your manager can record orders. Check with them.')->setStatusCode(403);
+        }
+
+        $lead = $this->visibleLead($request);
+        if (!$lead) {
+            return $this->response_failed('We could not find this outlet.');
+        }
+
+        $lines = $request->input('lines', []);
+        if (is_string($lines)) {
+            $lines = json_decode($lines, true);
+        }
+        if (!is_array($lines)) {
+            return $this->response_failed('Validation failed.', ['lines' => ['lines must be an array or a JSON array string.']]);
+        }
+
+        try {
+            $order = $orders->record($lead, $user, $lines, $request->input('order_date'), $request->input('remark'));
+        } catch (ValidationException $e) {
+            return $this->response_failed('Validation failed.', $e->errors());
+        }
+
+        return $this->response_success(['order' => $order->toSummary()], 'Order recorded successfully.');
+    }
+
+    /**
+     * The outlet's "Recommended" tab: ranked products with suggested monthly
+     * quantity, the gap list, estimated monthly value, and the "Why these?"
+     * explanation with an opening line (written on first open, then cached).
+     */
+    public function getLeadRecommendations(Request $request, RecommendationService $recommendations)
+    {
+        $lead = $this->visibleLead($request);
+        if (!$lead) {
+            return $this->response_failed('We could not find this outlet.');
+        }
+
+        try {
+            return $this->response_success($recommendations->forLead($lead), 'Recommendations retrieved successfully.');
+        } catch (Throwable $e) {
+            Log::error('Mobile recommendations failed', ['lead_id' => $lead->id, 'error' => $e->getMessage()]);
+            return $this->response_failed('Failed to retrieve recommendations.');
+        }
+    }
+
+    /** The lead named by lead_id (or leadID), if the caller may see it. */
+    private function visibleLead(Request $request): ?Leads
+    {
+        $leadId = $request->input('lead_id', $request->input('leadID'));
+        if (!$leadId) {
+            return null;
+        }
+
+        return Leads::visibleTo($request->user())->find($leadId);
+    }
+
+    /** Outlet profile fields shared by the list and detail responses. */
+    private function outletProfile(Leads $lead): array
+    {
+        return [
+            'size_band'       => $lead->size_band,
+            'size_band_label' => Leads::sizeBandLabel($lead->size_band),
+            'seats'           => $lead->seats,
+            'segment'         => $lead->segment,
+            'segment_label'   => Leads::segmentLabel($lead->segment),
+            // Same shape as a GPS Stamp answer; null when never captured.
+            'location'        => $lead->locationStamp(),
+        ];
     }
 
     private function upload(Request $request, $lead_id)

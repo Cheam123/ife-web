@@ -5,7 +5,8 @@
     <div class="card">
         
         <div class="form-body">
-            @include('page.leads.form.lead-form', ['type' => 'view'])                        
+            @include('page.leads.form.lead-form', ['type' => 'view'])
+            @include('page.leads.partials._outlet-activity')
             <div class="form-actions">
                 <div class="custom_float">
                     <a href="{{route('lead.index')}}" class="btn btn-primary waves-effect waves-light custom-button-shadow" style="width:100px">@lang('translation.back')</a>

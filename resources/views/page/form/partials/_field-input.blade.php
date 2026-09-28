@@ -171,6 +171,35 @@
         <div class="invalid-feedback d-block" id="error_{{ $elId }}"></div>
         @break
 
+    @case('gps')
+        {{-- Location stamp, filled only by the browser's geolocation
+             (form-gps.js), never typed. The hidden input holds the answer as
+             JSON {lat, lng, accuracy, captured_at} for readValue(). --}}
+        @php
+            $gpsValue = is_array($value) && isset($value['lat'], $value['lng']) ? $value : null;
+            $gpsMode  = ($element['capture_mode'] ?? 'auto') === 'manual' ? 'manual' : 'auto';
+        @endphp
+        <div class="gps-field border rounded p-3">
+            <input type="hidden" class="gps-input" data-el-id="{{ $elId }}" data-capture-mode="{{ $gpsMode }}"
+                   value="{{ $gpsValue ? json_encode($gpsValue) : '' }}" {{ $disabled ? 'disabled' : '' }}>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="gps-readout flex-grow-1 small text-muted">
+                    <i class="mdi mdi-map-marker-off-outline me-1"></i>Location not stamped yet.
+                </div>
+                @unless($disabled)
+                    <button type="button" class="btn btn-sm btn-outline-primary gps-capture-btn">
+                        <i class="mdi mdi-crosshairs-gps me-1"></i><span class="gps-btn-label">Stamp location</span>
+                    </button>
+                @endunless
+            </div>
+            <div class="gps-status small mt-1"></div>
+        </div>
+        <div class="invalid-feedback d-block" id="error_{{ $elId }}"></div>
+        @once
+            <script src="{{ asset('js/forms/form-gps.js') }}"></script>
+        @endonce
+        @break
+
     @default
         <input type="text" class="form-control form-input" data-el-id="{{ $elId }}"
                placeholder="Enter {{ $element['label'] ?? '' }}" value="{{ is_scalar($value) ? $value : '' }}" {{ $disabled ? 'disabled' : '' }}>

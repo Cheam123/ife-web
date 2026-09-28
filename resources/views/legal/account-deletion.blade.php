@@ -5,13 +5,13 @@
 
 @section('legal-content')
 
-    <p>Use this page to ask us to delete your EciattoLife account and the personal data held with it. You do not need the app installed to submit a request.</p>
+    <p>Use this page to ask us to delete your Ronda account and the personal data held with it. You do not need the app installed to submit a request.</p>
 
     @if (session('deletion_submitted'))
 
         <div class="alert alert-success" role="alert" style="margin-top: 24px;">
             <h3 style="margin-top: 0;">Your request has been received</h3>
-            <p style="margin-bottom: 0;">If the address you entered matches an EciattoLife account, our team will verify the request and erase the personal data held with it within 30 days. We will contact you at that address if we need anything further.</p>
+            <p style="margin-bottom: 0;">If the address you entered matches a Ronda account, our team will verify the request and erase the personal data held with it within 30 days. We will contact you at that address if we need anything further.</p>
         </div>
 
     @else
@@ -27,12 +27,12 @@
         <ul>
             <li>Our team is notified and verifies that the request genuinely comes from you.</li>
             <li>Your account is disabled, so you can no longer sign in.</li>
-            <li>Within 30 days we erase your personal data: your name, email address, mobile number, location check-in history, uploaded photos and documents, and your push notification token.</li>
-            <li>Records of work you performed — tasks, leads, reports and form submissions — are kept as your employer's business records, with your identifying details removed.</li>
+            <li>Within 30 days we erase your personal data: your name, email address, mobile number, uploaded photos and documents, and your push notification token.</li>
+            <li>Records of work you performed — tasks, outlets and orders, visit reports and form submissions, including their Location Stamps — are kept as your employer's business records, with your identifying details removed.</li>
         </ul>
 
         <div class="legal-callout">
-            <p><strong>EciattoLife accounts are created and owned by your employer.</strong> We may need to confirm your request with them before erasing data, for example where records must be retained under your employment terms or by law.</p>
+            <p><strong>Ronda accounts are created and owned by your employer.</strong> We may need to confirm your request with them before erasing data, for example where records must be retained under your employment terms or by law.</p>
         </div>
 
         <p>If you have the app installed, you can also do this from <strong>More &rarr; Account &rarr; Delete Account</strong>, which disables your account immediately.</p>
@@ -43,7 +43,7 @@
             @csrf
 
             <div class="mb-3">
-                <label for="email" class="form-label">Email address on your EciattoLife account</label>
+                <label for="email" class="form-label">Email address on your Ronda account</label>
                 <input
                     type="email"
                     class="form-control @error('email') is-invalid @enderror"

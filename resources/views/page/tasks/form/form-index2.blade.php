@@ -187,7 +187,7 @@ $agent = new Agent();
         }
     }
 
-    /* ===== Sales Manager triage redesign (Eciatto warm theme) ===== */
+    /* ===== Sales Manager triage redesign (warm theme) ===== */
     .triage-card {
         background: #ffffff;
         border: 1px solid #e6dfcf;

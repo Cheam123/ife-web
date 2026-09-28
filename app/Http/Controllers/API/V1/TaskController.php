@@ -43,6 +43,7 @@ use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use ZipArchive;
 use Config;
+use Throwable;
 
 
 class TaskController extends Controller
@@ -467,14 +468,18 @@ class TaskController extends Controller
 
     public function create(Request $request)
     {
-        if (!Auth::guard('web')->user()->can('create_task')) {
+        $user = Auth::guard('web')->user();
+
+        if (!$user->can('add_task')) {
             $response['title']      = trans('translation.access_error');
             $response['message'][0] = trans('translation.access_error_msg');
             $response['message'][1] = trans('translation.check_with_ur_superior');
             return view('errors.custom-error', compact('response'));
         }
 
-        $lead        = Leads::findOrFail($request->input('id'));
+        // Without create_task the view hides the people pickers (the task is
+        // the user's own), and only leads they can already see are offered.
+        $lead        = Leads::visibleTo($user)->findOrFail($request->input('id'));
         $subscriber  = User::assignable()->get();
         $viewer      = $subscriber;
         $owner       = $subscriber;
@@ -488,12 +493,20 @@ class TaskController extends Controller
 
     public function store(TaskCreateRequest $request)
     {
-        if (!Auth::guard('web')->user()->can('create_task')) {
+        $user = Auth::guard('web')->user();
+
+        if (!$user->can('add_task')) {
             $response['title']      = trans('translation.access_error');
             $response['message'][0] = trans('translation.access_error_msg');
             $response['message'][1] = trans('translation.check_with_ur_superior');
             return view('errors.custom-error', compact('response'));
         }
+
+        // create_task means "create and assign to others". Without it the task
+        // is the user's own: they are its subscriber, checker and owner, and
+        // it may only go on a lead they can already see.
+        $assigns = $user->can('create_task');
+        Leads::visibleTo($user)->findOrFail($request->input('lead_id'));
 
         $retryCount = 0;
         $maxRetries = 3;
@@ -501,13 +514,19 @@ class TaskController extends Controller
         while ($retryCount < $maxRetries) {
             try {
                 DB::beginTransaction();
-            
-                $validatedData = $request->validated();
-                $subscriber    = User::where('id',$validatedData['subscriber'])->first();
 
-                $lead             = Leads::where('id',$validatedData['lead_id'])->lockForUpdate()->first();
-                $lead->assign_to  = $subscriber->id;
-                $lead->hq_checker = Auth::guard('web')->user()->id;
+                $validatedData  = $request->validated();
+                $subscriber     = $assigns ? User::where('id',$validatedData['subscriber'])->first() : $user;
+                $subSubscribers = $assigns ? ($validatedData['sub_subscriber'] ?? []) : [];
+                $owners         = $assigns ? ($validatedData['owner'] ?? []) : [$user->id];
+                $viewers        = $assigns ? ($validatedData['viewer'] ?? []) : [];
+
+                $lead            = Leads::where('id',$validatedData['lead_id'])->lockForUpdate()->first();
+                $lead->assign_to = $subscriber->id;
+                // hq_checker is the overseeing manager; a rep's own task keeps it.
+                if ($assigns) {
+                    $lead->hq_checker = $user->id;
+                }
                 $lead->save();
 
                 $task = new Tasks();
@@ -572,36 +591,30 @@ class TaskController extends Controller
                 $taskUser->save();
 
                 // sub-subscriber
-                if (isset($validatedData['sub_subscriber'])) {
-                    foreach($validatedData['sub_subscriber'] as $o) {
-                        $taskUser = new TaskUsers();
-                        $taskUser->task_id  = $task->id;
-                        $taskUser->user_id  = $o;
-                        $taskUser->role     = 6;
-                        $taskUser->save();
-                    }
+                foreach($subSubscribers as $o) {
+                    $taskUser           = new TaskUsers();
+                    $taskUser->task_id  = $task->id;
+                    $taskUser->user_id  = $o;
+                    $taskUser->role     = 6;
+                    $taskUser->save();
                 }
 
                 // owner
-                if (isset($validatedData['owner'])) {
-                    foreach($validatedData['owner'] as $o) {
-                        $taskUser = new TaskUsers();
-                        $taskUser->task_id  = $task->id;
-                        $taskUser->user_id  = $o;
-                        $taskUser->role     = 4;
-                        $taskUser->save();
-                    }
+                foreach($owners as $o) {
+                    $taskUser           = new TaskUsers();
+                    $taskUser->task_id  = $task->id;
+                    $taskUser->user_id  = $o;
+                    $taskUser->role     = 4;
+                    $taskUser->save();
                 }
 
                 // viewer
-                if (isset($validatedData['viewer'])) {
-                    foreach($validatedData['viewer'] as $v) {
-                        $taskUser = new TaskUsers();
-                        $taskUser->task_id  = $task->id;
-                        $taskUser->user_id  = $v;
-                        $taskUser->role     = 5;
-                        $taskUser->save();
-                    }
+                foreach($viewers as $v) {
+                    $taskUser           = new TaskUsers();
+                    $taskUser->task_id  = $task->id;
+                    $taskUser->user_id  = $v;
+                    $taskUser->role     = 5;
+                    $taskUser->save();
                 }
 
                 if (null !== $request->file('file')) {

@@ -17,6 +17,11 @@ Route::group(['middleware' => ['auth']], function () {
 
     Route::post('/delete', 'API\V1\LeadController@delete')->name('lead.delete');
 
+    # Orders placed by the outlet
+    Route::get('/{id}/orders/create', 'API\V1\OrderController@create')->name('lead.orders.create');
+    Route::post('/{id}/orders', 'API\V1\OrderController@store')->name('lead.orders.store');
+    Route::post('/orders/{order}/cancel', 'API\V1\OrderController@cancel')->name('lead.orders.cancel');
+
     Route::post('/files/store', 'API\V1\LeadController@fileStore')->name('lead.file.store');
     Route::get('/files/download', 'API\V1\LeadController@download')->name('lead.file.download');
     Route::get('/files/remove', 'API\V1\LeadController@deleteDocument')->name('lead.file.delete');

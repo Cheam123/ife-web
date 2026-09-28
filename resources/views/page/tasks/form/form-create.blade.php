@@ -9,6 +9,13 @@
                     Task Detail
                 </div>
                 <div class="m-2">
+                    {{-- Only users who assign tasks to others pick the people;
+                         anyone else's task is their own (TaskController@store). --}}
+                    @cannot('create_task')
+                    <div class="alert alert-info py-2 px-3 custom-font-small mb-2">
+                        <i class="fas fa-user-check me-1"></i> You will start this task.
+                    </div>
+                    @else
                     <div class="row">
                         <!-- Subscriber -->
                         <div class="col-md-3 col-xl-3" style="padding-bottom:10px;">
@@ -55,6 +62,7 @@
                             </select>
                         </div>
                     </div>
+                    @endcannot
 
                     <div class="row">
                         <!-- Title -->

@@ -19,19 +19,20 @@
 
     var TYPES_WITH_VALUES = ['select', 'multi-choice', 'multi-select', 'checkbox'];
     var CONDITION_OPERATORS = {
-        'text':         ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
-        'textarea':     ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
-        'email':        ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
-        'tel':          ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
-        'select':       ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
-        'multi-choice': ['includes', 'not_includes', 'is_empty', 'is_not_empty'],
-        'multi-select': ['includes', 'not_includes', 'is_empty', 'is_not_empty'],
-        'checkbox':     ['includes', 'not_includes', 'is_empty', 'is_not_empty'],
-        'number':       ['equals', 'not_equals', 'gt', 'lt', 'is_empty', 'is_not_empty'],
-        'date':         ['equals', 'not_equals', 'gt', 'lt', 'is_empty', 'is_not_empty'],
-        'time':         ['equals', 'not_equals', 'gt', 'lt', 'is_empty', 'is_not_empty'],
-        'file':         ['is_empty', 'is_not_empty'],
-        'user':         ['equals', 'not_equals', 'is_empty', 'is_not_empty']
+        'text'         : ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
+        'textarea'     : ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
+        'email'        : ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
+        'tel'          : ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
+        'select'       : ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
+        'multi-choice' : ['includes', 'not_includes', 'is_empty', 'is_not_empty'],
+        'multi-select' : ['includes', 'not_includes', 'is_empty', 'is_not_empty'],
+        'checkbox'     : ['includes', 'not_includes', 'is_empty', 'is_not_empty'],
+        'number'       : ['equals', 'not_equals', 'gt', 'lt', 'is_empty', 'is_not_empty'],
+        'date'         : ['equals', 'not_equals', 'gt', 'lt', 'is_empty', 'is_not_empty'],
+        'time'         : ['equals', 'not_equals', 'gt', 'lt', 'is_empty', 'is_not_empty'],
+        'file'         : ['is_empty', 'is_not_empty'],
+        'user'         : ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
+        'gps'          : ['is_empty', 'is_not_empty']
     };
     var OPERATOR_LABELS = {
         equals: 'is', not_equals: 'is not',
@@ -44,7 +45,7 @@
         'text': 'Enter', 'textarea': 'Enter', 'email': 'Enter', 'tel': 'Enter', 'number': 'Enter',
         'select': 'Select ›', 'multi-choice': 'Select ›', 'multi-select': 'Select ›',
         'checkbox': 'Select ›', 'date': 'Select ›', 'time': 'Select ›', 'file': 'Upload ›',
-        'user': 'Select a person ›'
+        'user': 'Select a person ›', 'gps': 'Stamp location ›'
     };
 
     var uidCounter = 0;
@@ -431,6 +432,10 @@
                 html += this.userSourceHtml(element);
             }
 
+            if (element.type === 'gps') {
+                html += this.captureModeHtml(element);
+            }
+
             if (hasValues) {
                 html += '<label class="form-label small fw-semibold">Options <span class="text-danger">*</span></label>';
                 html += '<div id="ps-options">' + this.optionsEditorHtml(element) + '</div>';
@@ -467,6 +472,20 @@
                    '            data-placeholder="Search and select people...">' + options + '</select>' +
                    '    <div class="form-text small">Only these people appear in the picker on the form.</div>' +
                    '  </div>' +
+                   '</div>';
+        },
+
+        /* Location Stamp field: stamp as the form opens, or only when tapped. */
+        captureModeHtml: function (element) {
+            var mode = element.capture_mode === 'manual' ? 'manual' : 'auto';
+
+            return '<div class="mb-3">' +
+                   '  <label class="form-label small fw-semibold">When to stamp</label>' +
+                   '  <select class="form-select form-select-sm js-select2" id="ps-capture-mode" data-no-search="1">' +
+                   '    <option value="auto"' + (mode === 'auto' ? ' selected' : '') + '>As soon as the form opens</option>' +
+                   '    <option value="manual"' + (mode === 'manual' ? ' selected' : '') + '>When the user taps "Stamp location"</option>' +
+                   '  </select>' +
+                   '  <div class="form-text small">The location always comes from the device. Nobody can type it in.</div>' +
                    '</div>';
         },
 
@@ -654,6 +673,11 @@
             $(document).on('change', '#ps-user-ids', function () {
                 var element = self.element();
                 if (element) element.user_ids = ($(this).val() || []).map(Number);
+            });
+
+            $(document).on('change', '#ps-capture-mode', function () {
+                var element = self.element();
+                if (element) element.capture_mode = $(this).val() === 'manual' ? 'manual' : 'auto';
             });
 
             $(document).on('input', '#ps-desc-text', function () {
@@ -863,7 +887,8 @@
                 text: el.text || '', placeholder: el.placeholder || '',
                 mandatory: !!el.mandatory, values: el.values || [], min: el.min || null, max: el.max || null,
                 min_days: el.min_days || null, visible_when: el.visible_when || null,
-                user_source: el.user_source || 'all', user_ids: el.user_ids || []
+                user_source: el.user_source || 'all', user_ids: el.user_ids || [],
+                capture_mode: el.capture_mode || 'auto'
             };
         },
 
@@ -875,7 +900,7 @@
             }
             var config = { kind: 'field', type: type, label: '', placeholder: '', mandatory: false,
                            values: [], min: null, max: null, min_days: null, visible_when: null,
-                           user_source: 'all', user_ids: [] };
+                           user_source: 'all', user_ids: [], capture_mode: 'auto' };
             if (TYPES_WITH_VALUES.indexOf(type) !== -1) {
                 config.values = type === 'multi-select' ? [{ group: '', options: [''] }] : [''];
             }
@@ -1160,7 +1185,9 @@
                     // Person fields: which people the picker offers.
                     user_source: element.type === 'user' ? (element.user_source || 'all') : null,
                     user_ids: element.type === 'user' && element.user_source === 'selected'
-                              ? (element.user_ids || []).map(Number) : []
+                              ? (element.user_ids || []).map(Number) : [],
+                    // Location Stamp fields: stamp on open ('auto') or on tap ('manual').
+                    capture_mode: element.type === 'gps' ? (element.capture_mode || 'auto') : null
                 };
             });
 

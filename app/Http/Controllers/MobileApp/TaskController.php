@@ -626,23 +626,34 @@ class TaskController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->can('create_task')) {
-            return $this->response_failed('You do not have permission to create tasks.', null, 403);
+        if (!$user->can('add_task')) {
+            return $this->response_failed('Only your manager can add a task. Check with them.')->setStatusCode(403);
         }
 
-        if(Leads::where('id', $request->input('lead_id'))->doesntExist()) {
-            return $this->response_failed('Lead not found.');
+        // create_task means "create and assign to others". Without it the task
+        // is the user's own: they are its subscriber, checker and owner.
+        $assigns = $user->can('create_task');
+
+        // Only on a lead this user can already see (everyone, for Admin/Manager).
+        if (Leads::visibleTo($user)->where('id', $request->input('lead_id'))->doesntExist()) {
+            return $this->response_failed('We could not find this outlet.');
         }
 
         try {
             DB::beginTransaction();
 
-            $validatedData = $request->validated();
-            $subscriber    = User::where('id', $validatedData['subscriber'])->firstOrFail();
+            $validatedData  = $request->validated();
+            $subscriber     = $assigns ? User::where('id', $validatedData['subscriber'])->firstOrFail() : $user;
+            $subSubscribers = $assigns ? ($validatedData['sub_subscriber'] ?? []) : [];
+            $owners         = $assigns ? ($validatedData['owner'] ?? []) : [$user->id];
+            $viewers        = $assigns ? ($validatedData['viewer'] ?? []) : [];
 
             $lead = Leads::where('id', $validatedData['lead_id'])->lockForUpdate()->firstOrFail();
-            $lead->assign_to  = $subscriber->id;
-            $lead->hq_checker = $user->id;
+            $lead->assign_to = $subscriber->id;
+            // hq_checker is the overseeing manager; a rep's own task keeps it.
+            if ($assigns) {
+                $lead->hq_checker = $user->id;
+            }
             $lead->save();
 
             $task = new Tasks();
@@ -702,36 +713,30 @@ class TaskController extends Controller
             $taskUser->save();
 
             // sub-subscriber
-            if (isset($validatedData['sub_subscriber'])) {
-                foreach ($validatedData['sub_subscriber'] as $o) {
-                    $taskUser = new TaskUsers();
-                    $taskUser->task_id = $task->id;
-                    $taskUser->user_id = $o;
-                    $taskUser->role = 6;
-                    $taskUser->save();
-                }
+            foreach ($subSubscribers as $o) {
+                $taskUser          = new TaskUsers();
+                $taskUser->task_id = $task->id;
+                $taskUser->user_id = $o;
+                $taskUser->role    = 6;
+                $taskUser->save();
             }
 
             // owner
-            if (isset($validatedData['owner'])) {
-                foreach ($validatedData['owner'] as $o) {
-                    $taskUser = new TaskUsers();
-                    $taskUser->task_id = $task->id;
-                    $taskUser->user_id = $o;
-                    $taskUser->role = 4;
-                    $taskUser->save();
-                }
+            foreach ($owners as $o) {
+                $taskUser          = new TaskUsers();
+                $taskUser->task_id = $task->id;
+                $taskUser->user_id = $o;
+                $taskUser->role    = 4;
+                $taskUser->save();
             }
 
             // viewer
-            if (isset($validatedData['viewer'])) {
-                foreach ($validatedData['viewer'] as $v) {
-                    $taskUser = new TaskUsers();
-                    $taskUser->task_id = $task->id;
-                    $taskUser->user_id = $v;
-                    $taskUser->role = 5;
-                    $taskUser->save();
-                }
+            foreach ($viewers as $v) {
+                $taskUser          = new TaskUsers();
+                $taskUser->task_id = $task->id;
+                $taskUser->user_id = $v;
+                $taskUser->role    = 5;
+                $taskUser->save();
             }
 
             if ($request->hasFile('file')) {

@@ -28,6 +28,9 @@ Route::post('/account-deletion', [App\Http\Controllers\LegalController::class, '
 
 Route::get('/', [App\Http\Controllers\HomeController::class, 'root']);
 Route::get('/index', [App\Http\Controllers\HomeController::class, 'index']);
+Route::post('/index/digest', [App\Http\Controllers\HomeController::class, 'regenerateDigest'])
+    ->middleware('throttle:6,1')
+    ->name('dashboard.digest');
 
 Route::group(['prefix' => 'v1'], function () {
 
@@ -56,4 +59,10 @@ Route::group(['prefix' => 'v1'], function () {
 
     # Form Group
     Route::prefix('form')->group(__DIR__ . '/api/form.php');
+
+    # Product Catalogue Group
+    Route::prefix('product')->group(__DIR__ . '/api/product.php');
+
+    # IFE Area Group
+    Route::prefix('area')->group(__DIR__ . '/api/area.php');
 });

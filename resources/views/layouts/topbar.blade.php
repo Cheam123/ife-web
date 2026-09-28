@@ -5,18 +5,18 @@
             <div class="navbar-brand-box" style="margin-left:15px;">
                 <a href="{{url('index')}}" class="logo logo-dark">
                     <span class="logo-sm">
-                        <img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="22">
+                        <img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="26">
                     </span>
                     <span class="logo-lg">
-                        <img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="20">
+                        <img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="26">
                     </span>
                 </a>
                 <a href="{{url('index')}}" class="logo logo-light">
                     <span class="logo-sm">
-                        <img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="22">
+                        <img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="26">
                     </span>
                     <span class="logo-lg">
-                        <img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="20">
+                        <img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="26">
                     </span>
                 </a>
             </div>

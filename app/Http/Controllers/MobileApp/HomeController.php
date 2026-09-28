@@ -4,8 +4,15 @@ namespace App\Http\Controllers\MobileApp;
 
 use App\Http\Controllers\Controller;
 use App\Models\GeneralSetting;
+use App\Models\IFEReport;
 use App\Models\Tasks;
+use App\Models\User;
+use App\Services\FormApprovalService;
+use App\Services\FormRecordService;
+use App\Services\TaskRisk;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
 {
@@ -49,9 +56,118 @@ class HomeController extends Controller
                 'subtitle' => $subtitle
             ],
             'listOfPermissions' => $listOfPermissions,
+            'today'             => $this->dayAtAGlance($user),
         ];
 
         return $this->response_ok($data, 'Dashboard summary retrieved successfully.');
+    }
+
+    /**
+     * Day at a glance: the caller's OWN work for today (tasks they take part
+     * in, visits they planned, form steps waiting on them), whatever their
+     * role. The counts above keep their existing, role-scoped meaning.
+     */
+    private function dayAtAGlance(User $user): array
+    {
+        $now   = Carbon::now();
+        $today = $now->toDateString();
+        $risk  = TaskRisk::fromConfig();
+
+        $mine = Tasks::whereHas('users', fn ($q) => $q->where('user_id', $user->id))
+            ->with('lead:id,name,business_name');
+
+        $taskRow = function (Tasks $task) use ($risk, $now) {
+            $assessment = $risk->assessTask($task, $now);
+
+            return [
+                'id'             => $task->id,
+                'reference'      => $task->task_reference,
+                'title'          => $task->title,
+                'lead_id'        => $task->lead_id,
+                'lead_name'      => optional($task->lead)->business_name ?: optional($task->lead)->name,
+                'status'         => $task->status,
+                'status_label'   => Tasks::getTaskStatus($task->status),
+                'due_date'       => $task->due_date,
+                'due_time'       => $task->due_time,
+                'appointment_at' => $task->appointment_date ? Carbon::parse($task->appointment_date)->toDateTimeString() : null,
+                'risk'           => $assessment['level'],
+                'risk_reason'    => $assessment['reason'],
+            ];
+        };
+
+        $dueToday = (clone $mine)
+            ->whereIn('status', TaskRisk::OPEN_STATUSES)
+            ->whereDate('due_date', $today)
+            ->orderBy('due_time')
+            ->limit(20)
+            ->get()
+            ->map($taskRow)
+            ->values();
+
+        $appointments = (clone $mine)
+            ->whereIn('status', [1, 2, 8])
+            ->whereDate('appointment_date', $today)
+            ->orderBy('appointment_date')
+            ->limit(20)
+            ->get()
+            ->map($taskRow)
+            ->values();
+
+        $atRisk = (clone $mine)
+            ->whereIn('status', TaskRisk::OPEN_STATUSES)
+            ->get()
+            ->filter(fn (Tasks $task) => $risk->assessTask($task, $now)['level'] !== TaskRisk::ON_TRACK)
+            ->count();
+
+        // Follow-up visits the caller planned for today in an earlier IFE report.
+        $visits = IFEReport::where('created_by', $user->id)
+            ->whereDate('next_followup_date', $today)
+            ->orderBy('id')
+            ->limit(20)
+            ->get()
+            ->map(fn (IFEReport $report) => [
+                'ife_report_id' => $report->id,
+                'lead_id'       => $report->lead_id,
+                'outlet'        => $report->shop_name ?: $report->company_name,
+                'plan'          => $report->next_followup_plan,
+                'location'      => $report->location,
+            ])
+            ->values();
+
+        // Service jobs: form steps (fill / approval) waiting on the caller.
+        try {
+            $records   = app(FormRecordService::class);
+            $formSteps = app(FormApprovalService::class)->pendingFor($user)
+                ->take(20)
+                ->map(fn ($submission) => [
+                    'entry_id'     => $submission->id,
+                    'record_title' => $records->titleFor($submission),
+                    'reference'    => $submission->recordReference(),
+                    'form_name'    => optional($submission->form)->name,
+                    'stage_name'   => optional($submission->currentStage())->name,
+                    'stage_type'   => optional($submission->currentStage())->node_type,
+                    'submitted_at' => optional($submission->created_at)->toDateTimeString(),
+                ])
+                ->values();
+        } catch (\Throwable $e) {
+            Log::warning('Mobile home: form steps unavailable', ['error' => $e->getMessage()]);
+            $formSteps = collect();
+        }
+
+        return [
+            'date'           => $today,
+            'counts'         => [
+                'tasks_due'      => $dueToday->count(),
+                'appointments'   => $appointments->count(),
+                'visits_planned' => $visits->count(),
+                'form_steps'     => $formSteps->count(),
+                'at_risk'        => $atRisk,
+            ],
+            'tasks_due'      => $dueToday,
+            'appointments'   => $appointments,
+            'visits_planned' => $visits,
+            'form_steps'     => $formSteps,
+        ];
     }
 
     public function getLifeVersion(Request $request)

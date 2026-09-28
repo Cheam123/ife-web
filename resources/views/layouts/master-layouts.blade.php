@@ -32,9 +32,6 @@
     </div>
     <!-- END wrapper -->
 
-    <!-- Right Sidebar -->
-    @include('layouts.right-sidebar')
-    <!-- END Right Sidebar -->
 
     @include('layouts.vendor-scripts')
 </body>

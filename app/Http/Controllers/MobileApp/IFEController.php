@@ -50,6 +50,7 @@ class IFEController extends Controller
             foreach($IfeReports as $ifeReport) {
                 $ifeList[] = [
                     'id'                    => $ifeReport->id,
+                    'lead_id'               => $ifeReport->lead_id,
                     'company_name'          => $ifeReport->company_name,
                     'nature_of_business'    => $ifeReport->nature_of_business,
                     'status'                => $ifeReport->status,
@@ -174,14 +175,19 @@ class IFEController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $request, $user) {
+                // A visit to a known outlet is linked to it, so it shows up in
+                // that outlet's visit history.
+                $existingLead = $request->has('existing_lead_id') ? Leads::findOrFail($validated['existing_lead_id']) : null;
+
                 $IfeReport = new IFEReport();
                 $IfeReport->created_by            = $user->id;
                 $IfeReport->task_id               = null;
-                $IfeReport->company_name          = $request->has('existing_lead_id') ? (Leads::findOrFail($validated['existing_lead_id'])->name ?? null) : $validated['company_name'];
-                $IfeReport->nature_of_business    = $request->has('existing_lead_id') ? (Leads::findOrFail($validated['existing_lead_id'])->business_category ?? null) : $validated['nature_of_business'];
-                $IfeReport->status                = $request->has('existing_lead_id') ? (Leads::findOrFail($validated['existing_lead_id'])->customer_id ? 'Existing Customer' : "New Customer") : $validated['status'];
-                $IfeReport->ife_area              = $request->has('existing_lead_id') ? (Leads::findOrFail($validated['existing_lead_id'])->ife_area_id ?? null) : $validated['ife_area'];
-                $IfeReport->shop_name             = $request->has('existing_lead_id') ? (Leads::findOrFail($validated['existing_lead_id'])->business_name ?? null) : $validated['shop_name'];
+                $IfeReport->lead_id               = optional($existingLead)->id;
+                $IfeReport->company_name          = $existingLead ? ($existingLead->name ?? null) : $validated['company_name'];
+                $IfeReport->nature_of_business    = $existingLead ? ($existingLead->business_category ?? null) : $validated['nature_of_business'];
+                $IfeReport->status                = $existingLead ? ($existingLead->customer_id ? 'Existing Customer' : "New Customer") : $validated['status'];
+                $IfeReport->ife_area              = $existingLead ? ($existingLead->ife_area_id ?? null) : $validated['ife_area'];
+                $IfeReport->shop_name             = $existingLead ? ($existingLead->business_name ?? null) : $validated['shop_name'];
                 $IfeReport->problem_description   = $validated['problem_description'] ?? null;
                 $IfeReport->support_required      = $validated['support_required'] ?? null;
                 $IfeReport->support_description   = $validated['support_description'] ?? null;
@@ -432,149 +438,5 @@ class IFEController extends Controller
         }
 
         return $baseStyle . ' background: #8E8E93; color: white;';
-    }
-
-
-
-
-
-
-    // BELOW FUNCTION NO LONGER USED
-    function generateTask($id)
-    {
-        $ifeReport = IFEReport::where('id',$id)->first();
-        $lead = Leads::where('name', 'like' ,'%'.$ifeReport->company_name.'%')->first();
-
-        if (!$lead) {
-            $lead = new Leads();
-            $lead->name              = $ifeReport->company_name;
-            $lead->business_name     = $ifeReport->shop_name;
-            $lead->receiving_date    = $ifeReport->created_at;
-            $lead->belong_to         = $ifeReport->created_by;
-            $lead->assign_to         = $ifeReport->created_by;
-            $lead->hq_checker        = $ifeReport->created_by;
-            $lead->business_category = null;
-            $lead->source            = null;
-            $lead->email             = $ifeReport->email;
-            $lead->mobile            = $ifeReport->mobile;
-            $lead->address           = $ifeReport->location;
-            $lead->city_id           = null;
-            $lead->state_id          = null;
-            $lead->postcode          = null;
-            $lead->ife_area_id       = $ifeReport->ife_area;
-            $lead->remark            = $ifeReport->other_mobile_number;
-            $lead->save();
-        }
-
-        $task = new Tasks();
-        $task->alert                = 0;
-        $task->title                = 'IFE Route : ' . ($ifeReport->company_name ? $ifeReport->company_name : $ifeReport->shop_name);
-        $task->invoice_no           = null;
-        $task->sales                = null;
-        $task->due_notify           = 0;
-        $task->status               = 2;
-        $task->lead_id              = $lead->id;
-        $task->task_reference       = Tasks::nextReference();
-        $task->appointment_date     = null;
-        $task->start_date           = Carbon::parse($ifeReport->created_at)->format('Y-m-d');
-        $task->start_time           = Carbon::parse($ifeReport->created_at)->format('09:00:00');
-        $task->due_date             = $ifeReport->next_followup_date ? Carbon::parse($ifeReport->next_followup_date)->format('Y-m-d') : Carbon::parse($ifeReport->created_at)->format('Y-m-d');
-        $task->due_time             = Carbon::parse($ifeReport->created_at)->format('09:00:00');
-        $task->remark               = null;
-        $task->creation_date        = $ifeReport->created_at;
-        $task->inprogress_date      = $ifeReport->created_at;
-        $task->done_date            = null;
-        $task->verify_date          = null;
-        $task->complete_date        = null;
-        $task->reject_date          = null;
-        $task->kiv_date             = null;
-        $task->save();
-
-        // Task Users
-        // subscriber
-        $taskUser = new TaskUsers();
-        $taskUser->task_id = $task->id;
-        $taskUser->user_id = $ifeReport->created_by;
-        $taskUser->role    = 2;
-        $taskUser->save();
-
-        // checker
-        $taskUser = new TaskUsers();
-        $taskUser->task_id  = $task->id;
-        $taskUser->user_id  = User::where('email', 'danny.ho@eciatto.com')->first()->id;
-        $taskUser->role     = 3;
-        $taskUser->save();
-
-        // owner
-        $taskUser = new TaskUsers();
-        $taskUser->task_id  = $task->id;
-        $taskUser->user_id  = User::where('email', 'danny.ho@eciatto.com')->first()->id;
-        $taskUser->role     = 4;
-        $taskUser->save();
-
-        // Task History
-        $param_b = new Tasks();
-        $param_a = Tasks::with('lead')->findOrFail($task->id);
-        $data    = Helper::prepareDataForSerialize($param_b, $param_a);
-
-        $history = new TaskHistory();
-        $history->task_id           = $task->id;
-        $history->updated_by        = $ifeReport->created_by;
-        $history->before_status     = 0;
-        $history->after_status      = 2;
-        $history->content_before    = serialize($data['before']);
-        $history->content_after     = serialize($data['after']);
-        $history->remark            = NULL;
-        $history->save();
-
-        $ifeReport->task_id = $task->id;
-        $ifeReport->save();
-
-        //$html = Helper::generateIfeReportHTMLforComment($ifeReport);
-        
-        self::addIfeReportAsComment($ifeReport, $task);
-    }
-    public function addIfeReportAsComment($ifeReport, $task) 
-    {
-        $msg = "IFE ROUTE SUMMARY\n";
-        if ($ifeReport->ife_area) {
-            $msg .= "\nIFE Area: \n";
-            $msg .= htmlspecialchars(IfeArea::find($ifeReport->ife_area)->area ?? '') ."\n"; 
-        }
-        if ($ifeReport->location) {
-            $msg .= "\nLocation: \n";
-            $msg .= htmlspecialchars($ifeReport->location)."\n";
-        }
-        if ($ifeReport->problem_description) {
-            $msg .= "\nSummary: \n";
-            $msg .= nl2br(htmlspecialchars($ifeReport->problem_description ?? 'N/A'))."\n";
-        }
-
-        if ($ifeReport->support_required && $ifeReport->support_required <> 'N/A') {
-            $msg .= "\nSupport Required: \n";
-            $msg .= nl2br(htmlspecialchars($ifeReport->support_description ?? 'N/A'))."\n";
-        }
-        
-        if ($ifeReport->personal_remarks && $ifeReport->personal_remarks <> 'N/A') {
-            $msg .= "\nRemark: \n";
-            $msg .= nl2br(htmlspecialchars($ifeReport->personal_remarks ?? 'N/A'))."\n";
-        }
-
-        if ($ifeReport->next_followup_date) {
-            $msg .= "\nFollow Up Info: \n";
-            $msg .= date('M j, Y', strtotime($ifeReport->next_followup_date))."\n";
-            $msg .= htmlspecialchars($ifeReport->next_followup_plan ?? 'N/A')."\n";
-        }
-
-        $msg .= "\n";
-
-        // Create a task comment with the IFE report HTML
-        $comment = new TaskComment();
-        $comment->task_id       = $task->id;
-        $comment->submit_by     = $ifeReport->created_by;
-        $comment->submit_date   = now();
-        $comment->message       = $msg;
-        $comment->ife_report_id = $ifeReport->id;
-        $comment->save();
     }
 }

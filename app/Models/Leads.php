@@ -8,6 +8,7 @@ use App\Models\States;
 use App\Models\Tasks;
 
 use App\Models\Sales\User as Db2User;
+use App\Services\FormSchemaService;
 
 use App\Traits\Paginatable;
 use Kyslik\ColumnSortable\Sortable;
@@ -20,6 +21,28 @@ class Leads extends Model
 {
     use HasFactory, Paginatable, Sortable;
     use SoftDeletes;
+
+    /** Outlet size, ordered small to large (the recommender treats it as a rank). */
+    public const SIZE_BANDS = [
+        'small'  => 'Small',
+        'medium' => 'Medium',
+        'large'  => 'Large',
+    ];
+
+    /** Price segment the outlet sells into. */
+    public const SEGMENTS = [
+        'budget'    => 'Budget',
+        'mid_range' => 'Mid-range',
+        'premium'   => 'Premium',
+    ];
+
+    protected $casts = [
+        'latitude'             => 'float',
+        'longitude'            => 'float',
+        'location_accuracy'    => 'float',
+        'location_captured_at' => 'datetime',
+        'seats'                => 'integer',
+    ];
 
     protected $fillable = [
         'customer_id',
@@ -38,6 +61,13 @@ class Leads extends Model
         'state_id',
         'postcode',
         'ife_area_id',
+        'latitude',
+        'longitude',
+        'location_accuracy',
+        'location_captured_at',
+        'size_band',
+        'seats',
+        'segment',
         'remark',
         'created_at',
         'updated_at',
@@ -173,5 +203,73 @@ class Leads extends Model
     public function documentUploads()
     {
         return $this->hasMany(DocumentUpload::class,'lead_id','id');
+    }
+
+    /** Visits (IFE reports) made at this outlet, newest first. */
+    public function visits()
+    {
+        return $this->hasMany(IFEReport::class, 'lead_id', 'id')->orderByDesc('created_at');
+    }
+
+    /** Orders this outlet placed, newest first. */
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'lead_id', 'id')->orderByDesc('order_date')->orderByDesc('id');
+    }
+
+    public function recommendation()
+    {
+        return $this->hasOne(OutletRecommendation::class, 'lead_id', 'id');
+    }
+
+    public static function sizeBandLabel(?string $value): ?string
+    {
+        return $value === null ? null : (self::SIZE_BANDS[$value] ?? $value);
+    }
+
+    public static function segmentLabel(?string $value): ?string
+    {
+        return $value === null ? null : (self::SEGMENTS[$value] ?? $value);
+    }
+
+    /**
+     * Where the outlet is, in the GPS Stamp answer shape
+     * {lat, lng, accuracy, captured_at}; null when never captured.
+     */
+    public function locationStamp(): ?array
+    {
+        if ($this->latitude === null || $this->longitude === null) {
+            return null;
+        }
+
+        return [
+            'lat'         => (float) $this->latitude,
+            'lng'         => (float) $this->longitude,
+            'accuracy'    => $this->location_accuracy === null ? null : (float) $this->location_accuracy,
+            'captured_at' => optional($this->location_captured_at)->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Writes a location captured on the device. Same shape and validation as
+     * a GPS Stamp form answer; an empty value clears the location.
+     *
+     * @return string|null the validation error, or null once applied
+     */
+    public function applyLocationStamp($value): ?string
+    {
+        $gps = app(FormSchemaService::class)->normalizeGps(['label' => 'the outlet'], $value);
+        if ($gps['error'] !== null) {
+            return $gps['error'];
+        }
+
+        $stamp = $gps['value'];
+
+        $this->latitude             = $stamp['lat'] ?? null;
+        $this->longitude            = $stamp['lng'] ?? null;
+        $this->location_accuracy    = $stamp['accuracy'] ?? null;
+        $this->location_captured_at = isset($stamp['captured_at']) ? \Illuminate\Support\Carbon::parse($stamp['captured_at']) : null;
+
+        return null;
     }
 }

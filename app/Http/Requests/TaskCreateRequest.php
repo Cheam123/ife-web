@@ -26,11 +26,14 @@ class TaskCreateRequest extends FormRequest
     public function rules()
     {
 
-        $user = $this->user();
+        $user    = $this->user();
+        // Only users who assign tasks to others pick a subscriber and owner;
+        // anyone else's task is their own (see TaskController::addTask/store).
+        $assigns = $user && $user->can('create_task');
 
         return [
             'title'                 => 'required',
-            'subscriber'            => 'required',
+            'subscriber'            => $assigns ? 'required' : 'nullable',
             'sub_subscriber'        => 'nullable',
             'task_start_date'       => 'required',
             'task_start_time'       => 'required',
@@ -38,7 +41,7 @@ class TaskCreateRequest extends FormRequest
             'task_due_time'         => 'required',
             'task_appointment_date' => 'nullable',
             'task_appointment_time' => 'nullable',
-            'owner'                 => 'required',
+            'owner'                 => $assigns ? 'required' : 'nullable',
             'viewer'                => 'nullable',
             'remark'                => 'nullable',
             'lead_id'               => 'required',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Leads;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -42,6 +43,12 @@ class LeadRequest extends FormRequest
             'postcode'      => 'nullable',
             'remark'        => 'nullable|string',
             'file'          => 'nullable',
+            // Outlet profile. The location ("gps") is checked by
+            // Leads::applyLocationStamp(), the same rules as a GPS Stamp field.
+            'size_band'     => 'nullable|in:' . implode(',', array_keys(Leads::SIZE_BANDS)),
+            'seats'         => 'nullable|integer|min:0|max:5000',
+            'segment'       => 'nullable|in:' . implode(',', array_keys(Leads::SEGMENTS)),
+            'gps'           => 'nullable',
         ];
     }
 }

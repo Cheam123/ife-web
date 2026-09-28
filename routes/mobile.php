@@ -39,6 +39,15 @@ Route::group(['middleware' => ['api'], 'prefix' => 'mobile'], function () {
       Route::post('/leads/create', 'MobileApp\LeadController@addLead')->name('leads.create');
       Route::post('/leads/edit', 'MobileApp\LeadController@editLead')->name('leads.edit');
 
+    // Outlet screen: visit history, order history, recommendations
+      Route::get('/leads/visits', 'MobileApp\LeadController@getLeadVisits')->name('leads.visits');
+      Route::get('/leads/orders', 'MobileApp\LeadController@getLeadOrders')->name('leads.orders');
+      Route::post('/leads/orders/create', 'MobileApp\LeadController@addLeadOrder')->name('leads.orders.create');
+      Route::get('/leads/recommendations', 'MobileApp\LeadController@getLeadRecommendations')->name('leads.recommendations');
+
+    // Product catalogue (read-only)
+      Route::get('/products', 'MobileApp\ProductController@index')->name('products');
+
     // Tasks
       Route::get('/tasks', 'MobileApp\TaskController@index')->name('tasks');
       Route::post('/tasks/create', 'MobileApp\TaskController@addTask')->name('tasks.create');

@@ -201,6 +201,68 @@
                     </div>
                 </div>
 
+                {{-- Outlet profile: what the recommendation engine compares outlets
+                     on, and where the outlet is. The location is captured on site
+                     with the same helper as a GPS Stamp form field. Manual only:
+                     editing at the office must not stamp the office. --}}
+                @php
+                    $profile   = $type == 'add' ? null : $customerDetail;
+                    $readonly  = $type == 'view';
+                    $gpsStamp  = old('gps', $profile ? json_encode($profile->locationStamp()) : '');
+                    $gpsStamp  = $gpsStamp === 'null' ? '' : $gpsStamp;
+                @endphp
+                <div class="row">
+                    <div class="col-md-3 col-xl-3" style="padding-bottom:10px;">
+                        <label for="size_band" class="custom-font-xsmall"><b>Outlet Size</b> :</label><span class="text-danger">{{ $errors->first('size_band') }}</span>
+                        <select class="form-control custom-font-small" name="size_band" id="size_band" style="width:100%;" {{ $readonly ? 'disabled' : '' }}>
+                            <option value="">-- Select Size --</option>
+                            @foreach(\App\Models\Leads::SIZE_BANDS as $key => $label)
+                                <option value="{{ $key }}" {{ old('size_band', optional($profile)->size_band) == $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 col-xl-3" style="padding-bottom:10px;">
+                        <label for="seats" class="custom-font-xsmall"><b>Seats</b> :</label><span class="text-danger">{{ $errors->first('seats') }}</span>
+                        <input type="number" min="0" max="5000" class="form-control form-control-sm custom-font-small" name="seats" id="seats"
+                               value="{{ old('seats', optional($profile)->seats) }}" autocomplete="off" {{ $readonly ? 'readonly' : '' }}>
+                    </div>
+
+                    <div class="col-md-3 col-xl-3" style="padding-bottom:10px;">
+                        <label for="segment" class="custom-font-xsmall"><b>Segment</b> :</label><span class="text-danger">{{ $errors->first('segment') }}</span>
+                        <select class="form-control custom-font-small" name="segment" id="segment" style="width:100%;" {{ $readonly ? 'disabled' : '' }}>
+                            <option value="">-- Select Segment --</option>
+                            @foreach(\App\Models\Leads::SEGMENTS as $key => $label)
+                                <option value="{{ $key }}" {{ old('segment', optional($profile)->segment) == $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-md-12 col-xl-12" style="padding-bottom:10px;">
+                        <label class="custom-font-xsmall"><b>Outlet Location</b> :</label>
+                        <span class="text-danger">@if (!empty($errors->first('gps'))) <i class="fas fa-exclamation-triangle"></i> @endif {{ $errors->first('gps') }}</span>
+                        <div class="gps-field border rounded p-2">
+                            <input type="hidden" class="gps-input" name="gps" data-el-id="lead_gps" data-capture-mode="manual"
+                                   value="{{ $gpsStamp }}" {{ $readonly ? 'disabled' : '' }}>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <div class="gps-readout flex-grow-1 small text-muted">
+                                    <i class="mdi mdi-map-marker-off-outline me-1"></i>Location not stamped yet.
+                                </div>
+                                @unless($readonly)
+                                    <button type="button" class="btn btn-sm btn-outline-primary gps-capture-btn">
+                                        <i class="mdi mdi-crosshairs-gps me-1"></i><span class="gps-btn-label">Stamp location</span>
+                                    </button>
+                                @endunless
+                            </div>
+                            <div class="gps-status small mt-1"></div>
+                        </div>
+                        @unless($readonly)
+                            <div class="custom-font-xxsmall text-muted mt-1">Stamp this while you are at the outlet.</div>
+                        @endunless
+                    </div>
+                </div>
+                <script src="{{ asset('js/forms/form-gps.js') }}"></script>
+
                 <div class="row">
                     <!-- Remark -->
                     <div class="col-md-12 col-xl-12" style="padding-bottom:10px;">
@@ -526,6 +588,8 @@
     $("#leadsource").select2({ dropdownCssClass: "small", containerCssClass: "small bg-white" });
     $("#businesscat").select2({ dropdownCssClass: "small", containerCssClass: "small bg-white" });
     $("#ifearea").select2({ dropdownCssClass: "small", containerCssClass: "small bg-white" });
+    $("#size_band").select2({ dropdownCssClass: "small", containerCssClass: "small bg-white", minimumResultsForSearch: Infinity });
+    $("#segment").select2({ dropdownCssClass: "small", containerCssClass: "small bg-white", minimumResultsForSearch: Infinity });
 
     var uploadedDocumentMap = {}
     

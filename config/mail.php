@@ -101,7 +101,7 @@ return [
     |
     */
 
-    'deletion_notify_address' => env('ACCOUNT_DELETION_NOTIFY_EMAIL', 'order@eciatto.com'),
+    'deletion_notify_address' => env('ACCOUNT_DELETION_NOTIFY_EMAIL', 'privacy@ronda.asia'),
 
     /*
     |--------------------------------------------------------------------------

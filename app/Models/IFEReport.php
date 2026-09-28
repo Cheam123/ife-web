@@ -13,6 +13,7 @@ class IFEReport extends Model
 
     protected $fillable = [
         'task_id',
+        'lead_id',
         'freeze',
         'created_by',
         'company_name',
@@ -48,6 +49,12 @@ class IFEReport extends Model
     public function task()
     {
         return $this->belongsTo(Tasks::class, 'task_id');
+    }
+
+    /** The outlet this visit was made at. */
+    public function lead()
+    {
+        return $this->belongsTo(Leads::class, 'lead_id')->withTrashed();
     }
 
     public function taskComment()

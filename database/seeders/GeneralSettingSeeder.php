@@ -48,7 +48,7 @@ class GeneralSettingSeeder extends Seeder
             ],
             [
                 'key'         => 'app_name',
-                'value'       => 'Eciatto Life System',
+                'value'       => 'Ronda',
                 'description' => 'System name',
             ],
             [

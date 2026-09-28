@@ -433,6 +433,16 @@ class FormApprovalService
                 $value = $picked;
             }
 
+            // Location stamps must be a real coordinate pair, same as on submit.
+            if ($element && ($element['type'] ?? '') === 'gps') {
+                $gps = $this->schema->normalizeGps($element, $value);
+                if ($gps['error'] !== null) {
+                    $errors[$elementId] = $gps['error'];
+                    continue;
+                }
+                $value = $gps['value'];
+            }
+
             $answers[$elementId] = $value;
         }
 
@@ -687,6 +697,12 @@ class FormApprovalService
             $count = is_array($value) ? count($value) : 0;
 
             return $count === 1 ? '1 attachment' : "{$count} attachments";
+        }
+
+        if ($type === 'gps') {
+            return is_array($value) && isset($value['lat'], $value['lng'])
+                ? $value['lat'] . ', ' . $value['lng']
+                : '';
         }
 
         if (is_array($value)) {

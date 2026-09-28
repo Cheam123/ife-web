@@ -5,11 +5,11 @@
 
 @section('legal-content')
 
-    <p>These terms govern your use of the EciattoLife mobile app and the EciattoLife web system at <strong>life.eciatto.com</strong> ("the Service"), operated by Eciatto ("we", "us"). By using the Service you agree to them.</p>
+    <p>These terms govern your use of the Ronda mobile app and the Ronda web system at <strong>hq.ronda.asia</strong> ("the Service"), operated by Ronda ("we", "us"). By using the Service you agree to them.</p>
 
     <h2>1. Accounts</h2>
 
-    <p>EciattoLife is licensed to businesses for their staff. You cannot register yourself — your employer creates your account, sets your role and permissions, and can suspend or remove it at any time. Your right to use the Service lasts only as long as your employer's agreement with us and your relationship with them.</p>
+    <p>Ronda is licensed to businesses for their staff. You cannot register yourself — your employer creates your account, sets your role and permissions, and can suspend or remove it at any time. Your right to use the Service lasts only as long as your employer's agreement with us and your relationship with them.</p>
 
     <p>You are responsible for keeping your password confidential and for activity under your account. Tell your employer immediately if you think someone else has access to it.</p>
 
@@ -20,7 +20,7 @@
     <ul>
         <li>Use the Service for anything unlawful, or in breach of your employer's policies;</li>
         <li>Upload content you have no right to share, or that is unlawful, offensive or infringing;</li>
-        <li>Falsify records, including task check-ins, reports and form submissions, or attempt to spoof your location;</li>
+        <li>Falsify records, including Location Stamps, reports and form submissions, or attempt to spoof your location;</li>
         <li>Access data belonging to other users or organisations that you have not been granted access to;</li>
         <li>Attempt to breach, probe or disrupt the Service, or reverse-engineer, decompile or copy any part of it;</li>
         <li>Use automated means to extract data from the Service.</li>
@@ -30,9 +30,9 @@
 
     <p>Content you submit — photos, documents, reports, form answers and comments — remains owned by you or your employer as your employment arrangement provides. You grant us the licence needed to host, process and display it in order to run the Service. We do not use it for any other purpose.</p>
 
-    <h2>4. Location and monitoring</h2>
+    <h2>4. Location</h2>
 
-    <p>The Service records your precise location, including in the background, when your employer requests a task check-in. By using the Service you acknowledge this. What is collected, and how to control it, is set out in our <a href="{{ route('legal.privacy') }}">Privacy Policy</a>. Whether check-ins are required of you is a matter between you and your employer, not us.</p>
+    <p>The Service records your precise location only when you submit a form that includes a Location Stamp, or when you stamp an outlet's location. It does not record your location in the background or while the app is closed. By using the Service you acknowledge this. What is recorded, and how to control it, is set out in our <a href="{{ route('legal.privacy') }}">Privacy Policy</a>. Whether a form requires a Location Stamp is decided by your employer, not us.</p>
 
     <h2>5. Availability</h2>
 

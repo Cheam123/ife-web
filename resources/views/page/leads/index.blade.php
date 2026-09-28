@@ -290,7 +290,7 @@
                                     @if(Auth::guard('web')->user()->can('edit_lead'))
                                         <a class="btn btn-sm btn-primary custom-button-shadow" href="lead/edit/{{ $s->id }}">@lang('translation.edit')</a>
                                     @endif
-                                    @if(Auth::guard('web')->user()->can('create_task') && 
+                                    @if(Auth::guard('web')->user()->can('add_task') &&
                                         (
                                             (empty($s->customer_id) && $s->runningTasks->count() == 0) || ($s->customer_id)
                                         )

@@ -52,6 +52,7 @@ class FormController extends Controller
         [ 'value' => 'checkbox', 'label' => 'Checkbox' ],
         [ 'value' => 'file', 'label' => 'File' ],
         [ 'value' => 'user', 'label' => 'User (person picker)' ],
+        [ 'value' => 'gps', 'label' => 'Location Stamp' ],
     ];
 
     public function index(Request $request) {
@@ -676,7 +677,15 @@ class FormController extends Controller
 
         abort_unless($submission->form && $submission->form->is_enabled, 403, 'This form is no longer available for submission.');
 
-        session()->flash('clone_prefill', $submission->form_elements);
+        // A GPS stamp records where *that* submission was made, so the copy
+        // starts without one and captures afresh.
+        $prefill = collect($submission->form_elements ?? [])
+            ->map(fn ($entry) => is_array($entry) && ($entry['type'] ?? '') === 'gps'
+                ? array_merge($entry, ['value' => null])
+                : $entry)
+            ->all();
+
+        session()->flash('clone_prefill', $prefill);
 
         return redirect()->route('form.fill', $submission->form_id);
     }
@@ -1142,7 +1151,13 @@ class FormController extends Controller
                 $value = $el['value'] ?? null;
                 $type  = $el['type']  ?? '';
                 $displayValue = '';
-                if (is_array($value)) {
+                if ($type === 'gps') {
+                    $displayValue = is_array($value) && isset($value['lat'], $value['lng'])
+                        ? $value['lat'] . ', ' . $value['lng']
+                          . (isset($value['accuracy']) ? ' (±' . round((float) $value['accuracy']) . ' m)' : '')
+                          . (!empty($value['captured_at']) ? ' @ ' . $value['captured_at'] : '')
+                        : '(not provided)';
+                } elseif (is_array($value)) {
                     if ($type === 'file') {
                         $names = array_filter(array_map(fn($f) => is_array($f) ? ($f['name'] ?? null) : (string) $f, $value), fn($n) => $n !== null && $n !== '');
                         $displayValue = count($names) ? implode(', ', $names) : '(not provided)';

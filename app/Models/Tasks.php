@@ -40,11 +40,13 @@ class Tasks extends Model
         'reject_date',
         'kiv_date',
         'onhold_date',
+        'at_risk_at',
         'created_at',
         'updated_at',
     ];
 
     protected $dates = [
+        'at_risk_at',
         'appointment_date',
         'creation_date',
         'inprogress_date',

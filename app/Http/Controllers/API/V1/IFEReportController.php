@@ -30,6 +30,7 @@ use App\Jobs\FirebaseNotification;
 
 use Carbon\Carbon;
 use Config;
+use Throwable;
 
 class IFEReportController extends Controller
 {
@@ -237,27 +238,37 @@ class IFEReportController extends Controller
 
         try {
             DB::beginTransaction();
-             
-            $ifeReport = IfeReport::where('id',$request->get('id'))->first();
 
-            $lead = new Leads();
-            $lead->business_name     = $ifeReport->shop_name;
-            $lead->receiving_date    = $ifeReport->created_at;
-            $lead->belong_to         = Auth::guard('web')->user()->id;
-            $lead->assign_to         = $ifeReport->created_by;
-            $lead->hq_checker        = Auth::guard('web')->user()->id;
-            $lead->name              = $ifeReport->company_name;
-            $lead->business_category = null;
-            $lead->source            = null;
-            $lead->email             = $ifeReport->email;
-            $lead->mobile            = $ifeReport->mobile;
-            $lead->address           = $ifeReport->location;
-            $lead->city_id           = null;
-            $lead->state_id          = null;
-            $lead->postcode          = null;
-            $lead->ife_area_id       = $ifeReport->ife_area;
-            $lead->remark            = $ifeReport->other_mobile_numbers;
-            $lead->save();
+            // The manager converting the report checks and owns the new task
+            // (this used to be one hard-coded account, which crashed any
+            // database that did not have it).
+            $manager   = Auth::guard('web')->user();
+            $ifeReport = IFEReport::findOrFail($request->get('id'));
+
+            // A visit already linked to an outlet becomes a task on that
+            // outlet; only an unlinked visit creates a new lead.
+            $lead = $ifeReport->lead_id ? Leads::find($ifeReport->lead_id) : null;
+
+            if (!$lead) {
+                $lead = new Leads();
+                $lead->business_name     = $ifeReport->shop_name;
+                $lead->receiving_date    = $ifeReport->created_at;
+                $lead->belong_to         = $manager->id;
+                $lead->assign_to         = $ifeReport->created_by;
+                $lead->hq_checker        = $manager->id;
+                $lead->name              = $ifeReport->company_name;
+                $lead->business_category = null;
+                $lead->source            = null;
+                $lead->email             = $ifeReport->email;
+                $lead->mobile            = $ifeReport->mobile_number;
+                $lead->address           = $ifeReport->location;
+                $lead->city_id           = null;
+                $lead->state_id          = null;
+                $lead->postcode          = null;
+                $lead->ife_area_id       = $ifeReport->ife_area;
+                $lead->remark            = $ifeReport->other_mobile_numbers;
+                $lead->save();
+            }
 
             $task = new Tasks();
             $task->alert                = 0;
@@ -294,14 +305,14 @@ class IFEReportController extends Controller
             // checker
             $taskUser = new TaskUsers();
             $taskUser->task_id  = $task->id;
-            $taskUser->user_id  = User::where('email','danny.ho@eciatto.com')->first()->id;
+            $taskUser->user_id  = $manager->id;
             $taskUser->role     = 3;
             $taskUser->save();
 
             // owner
             $taskUser = new TaskUsers();
             $taskUser->task_id  = $task->id;
-            $taskUser->user_id  = User::where('email','danny.ho@eciatto.com')->first()->id;
+            $taskUser->user_id  = $manager->id;
             $taskUser->role     = 4;
             $taskUser->save();
 
@@ -321,6 +332,7 @@ class IFEReportController extends Controller
             $history->save();
 
             $ifeReport->task_id = $task->id;
+            $ifeReport->lead_id = $lead->id;
             $ifeReport->save();
 
             $html = Helper::generateIfeReportHTML($ifeReport);

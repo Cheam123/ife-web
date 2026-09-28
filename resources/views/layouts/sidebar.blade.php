@@ -129,6 +129,26 @@
                     </a>
                 </li>
                 @endif
+
+                <!-- Products -->
+                @if(Auth::guard('web')->user()->can('manage_product'))
+                <li class="{{ \App\Helpers\Helper::setActive('v1/product*','mm-active') }}">
+                    <a href="{{ route('product.index') }}" class="{{ \App\Helpers\Helper::setActive('v1/product*','mm-active') }}">
+                        <i class="mdi mdi-package-variant-closed"></i>
+                        <span class="custom-font-small">Products</span>
+                    </a>
+                </li>
+                @endif
+
+                <!-- IFE Areas -->
+                @if(Auth::guard('web')->user()->can('manage_area'))
+                <li class="{{ \App\Helpers\Helper::setActive('v1/area*','mm-active') }}">
+                    <a href="{{ route('area.index') }}" class="{{ \App\Helpers\Helper::setActive('v1/area*','mm-active') }}">
+                        <i class="mdi mdi-map-marker-radius-outline"></i>
+                        <span class="custom-font-small">IFE Areas</span>
+                    </a>
+                </li>
+                @endif
             </ul>
         </div>
     </div>

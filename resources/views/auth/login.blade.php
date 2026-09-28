@@ -20,8 +20,8 @@
                 <div class="col-lg-12">
                     <div class="text-center">
                         <a href="{{ url('index') }}" class="mb-5 d-block auth-logo">
-                            <img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="60"
-                                class="logo logo-eciatto">
+                            <img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="60"
+                                class="logo">
                         </a>
                     </div>
                 </div>
@@ -32,8 +32,8 @@
 
                         <div class="card-body p-4">
                             <div class="text-center mt-2">
-                                <h5 class="text-primary">Welcome Back To {{ config('app.name', 'Laravel') }}!</h5>
-                                <p class="text-muted">Sign in to continue.</p>
+                                <h5 class="text-primary">Ready for your round?</h5>
+                                <p class="text-muted">Sign in.</p>
                             </div>
                             <div class="p-2 mt-4">
                                 <form method="POST" action="{{ route('login') }}">

@@ -10,10 +10,8 @@
                 <div class="col-md-8 col-lg-6 col-xl-5">
                     <div>
                         <a href="{{ url('index') }}" class="mb-5 d-block auth-logo">
-                            <img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="22"
-                                class="logo logo-eciatto">
-                            <!-- <img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="22"
-                                class="logo logo-eciatto"> -->
+                            <img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="22"
+                                class="logo">
                         </a>
                         <div class="card">
                             <div class="card-header">{{ __('Verify Your Email Address') }}</div>
@@ -38,7 +36,7 @@
                             <p>© <script>
                                     document.write(new Date().getFullYear())
 
-                                </script> Eciatto Sdn. Bhd.</p>
+                                </script> Ronda</p>
                         </div>
                     </div>
                 </div>

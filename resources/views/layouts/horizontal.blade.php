@@ -9,12 +9,12 @@ $agent = new Agent();
             <!-- LOGO -->
             <div class="navbar-brand-box" style="margin-left:15px;">
                 <a href="{{url('index')}}" class="logo logo-dark">
-                    <span class="logo-sm"><img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="22"></span>
-                    <span class="logo-lg"><img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="20"></span>
+                    <span class="logo-sm"><img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="26"></span>
+                    <span class="logo-lg"><img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="26"></span>
                 </a>
                 <a href="{{url('index')}}" class="logo logo-light">
-                    <span class="logo-sm"><img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="22"></span>
-                    <span class="logo-lg"><img src="{{ URL::asset('/assets/images/logo-eciatto.png') }}" alt="" height="20"></span>
+                    <span class="logo-sm"><img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="26"></span>
+                    <span class="logo-lg"><img src="{{ URL::asset('/assets/brand/ronda-logo.svg') }}" alt="Ronda" height="26"></span>
                 </a>
             </div>
 
@@ -183,18 +183,27 @@ $agent = new Agent();
                             </div>
                         </li>
 
-                        <!-- Users -->
-                        @if(Auth::guard('web')->user()->can('manage_user'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ \App\Helpers\Helper::setActive('v1/users', 'mm-active') }}
-                                               {{ \App\Helpers\Helper::setActive('v1/users/view*', 'mm-active') }}
-                                               {{ \App\Helpers\Helper::setActive('v1/users/create*', 'mm-active') }}
-                                               {{ \App\Helpers\Helper::setActive('v1/users/edit*', 'mm-active') }}"
-                                                                        href="{{ route('users.index') }}">
-                                <i class="uil-users-alt me-2">
-                                    <span class="menu-font-style">@lang('translation.Users')</span>
-                                </i>
+                        <!-- Admin: users, product catalogue, IFE areas -->
+                        @if(Auth::guard('web')->user()->can('manage_user') || Auth::guard('web')->user()->can('manage_product') || Auth::guard('web')->user()->can('manage_area'))
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle arrow-none {{ \App\Helpers\Helper::setActive('v1/users*', 'mm-active') }}
+                                                                          {{ \App\Helpers\Helper::setActive('v1/product*', 'mm-active') }}
+                                                                          {{ \App\Helpers\Helper::setActive('v1/area*', 'mm-active') }}"
+                                                            href="#" id="topnav-admin" role="button">
+                                <i class="uil-users-alt me-2"><span class="menu-font-style">Admin</span><div class="arrow-down"></div></i>
                             </a>
+
+                            <div class="dropdown-menu" aria-labelledby="topnav-admin">
+                                @if(Auth::guard('web')->user()->can('manage_user'))
+                                <a href="{{ route('users.index') }}" class="dropdown-item {{ \App\Helpers\Helper::setActive('v1/users*', 'mm-active') }}">@lang('translation.Users')</a>
+                                @endif
+                                @if(Auth::guard('web')->user()->can('manage_product'))
+                                <a href="{{ route('product.index') }}" class="dropdown-item {{ \App\Helpers\Helper::setActive('v1/product*', 'mm-active') }}">Products</a>
+                                @endif
+                                @if(Auth::guard('web')->user()->can('manage_area'))
+                                <a href="{{ route('area.index') }}" class="dropdown-item {{ \App\Helpers\Helper::setActive('v1/area*', 'mm-active') }}">IFE Areas</a>
+                                @endif
+                            </div>
                         </li>
                         @endif
                         

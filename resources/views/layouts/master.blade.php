@@ -124,7 +124,7 @@
                     @yield('content')
                     <section class="ldld light full">
                         <div style="margin: auto;">
-                            <img src="{{ URL::asset('/assets/images/spinner-1.svg') }}" alt="Loading...">
+                            <img src="{{ URL::asset('/assets/brand/ronda-spinner.svg') }}" alt="Loading..." width="96" height="96">
                         </div>
                     </section>
                 </div>
@@ -136,10 +136,6 @@
         <!-- end main content-->
     </div>
     <!-- END layout-wrapper -->
-
-    <!-- Right Sidebar -->
-    @include('layouts.right-sidebar')
-    <!-- /Right-bar -->
     
     <!-- JAVASCRIPT -->
     @include('layouts.vendor-scripts')

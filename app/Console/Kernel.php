@@ -34,6 +34,13 @@ class Kernel extends ConsoleKernel
         // half-filled form leaves the bytes behind with nothing pointing at them.
         $schedule->command('form:clear-orphan-uploads')->dailyAt('01:45');
         $schedule->command('task:reset-submit-count')->dailyAt('02:15');
+        // Nightly: every outlet's product recommendations (a single outlet is
+        // also refreshed whenever its profile or orders change).
+        $schedule->command('recommendation:refresh')->dailyAt('02:45');
+        // Morning briefing for managers on the dashboard.
+        $schedule->command('digest:daily')->dailyAt('07:00');
+        // Flags tasks at risk / overdue and pushes the new ones to managers.
+        $schedule->command('tasks:check-risk')->hourly();
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\FormSubmission;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 /**
  * Owns the versioned form_elements schema.
@@ -22,8 +23,11 @@ class FormSchemaService
 {
     public const FIELD_TYPES = [
         'text', 'textarea', 'email', 'tel', 'number', 'date', 'time',
-        'select', 'multi-choice', 'multi-select', 'checkbox', 'file', 'user',
+        'select', 'multi-choice', 'multi-select', 'checkbox', 'file', 'user', 'gps',
     ];
+
+    /** How a `gps` field captures: on form open, or when the user taps the button. */
+    public const GPS_CAPTURE_MODES = ['auto', 'manual'];
 
     /** Request-memoised user list for `user` fields (id => name). */
     private static ?array $userOptions = null;
@@ -43,6 +47,7 @@ class FormSchemaService
         'time'         => ['equals', 'not_equals', 'gt', 'lt', 'is_empty', 'is_not_empty'],
         'file'         => ['is_empty', 'is_not_empty'],
         'user'         => ['equals', 'not_equals', 'is_empty', 'is_not_empty'],
+        'gps'          => ['is_empty', 'is_not_empty'],
     ];
 
     private FormConditionEvaluator $conditions;
@@ -217,6 +222,11 @@ class FormSchemaService
                     && empty(array_filter(array_map('intval', $element['user_ids'] ?? [])))) {
                     $errors[] = 'Person field "' . ($element['label'] ?? $id)
                         . '" is limited to selected people but none are selected.';
+                }
+                if (($element['type'] ?? '') === 'gps'
+                    && !in_array($element['capture_mode'] ?? 'auto', self::GPS_CAPTURE_MODES, true)) {
+                    $errors[] = 'Location Stamp field "' . ($element['label'] ?? $id)
+                        . '" must stamp either when the form opens or when tapped.';
                 }
             } elseif ($kind === 'description') {
                 if (trim((string) ($element['text'] ?? '')) === '') {
@@ -437,8 +447,23 @@ class FormSchemaService
             $visible  = $visibility[$id] ?? true;
             $value    = ($visible && !$deferred) ? ($clientAnswers[$id] ?? null) : null;
 
+            // Location stamps are captured by the device, never typed, so
+            // anything that is not a real coordinate pair is refused. Runs
+            // before the mandatory check so "{}" cannot pass as an answer.
+            $gpsError = null;
+            if (($element['type'] ?? '') === 'gps') {
+                $gps      = $this->normalizeGps($element, $value);
+                $value    = $gps['value'];
+                $gpsError = $gps['error'];
+            }
+
             if ($visible && !$deferred && ($element['mandatory'] ?? false) && $this->conditions->isEmptyValue($value)) {
                 $errors[$id] = ($element['label'] ?? 'This field') . ' is required.';
+            }
+
+            // A malformed stamp says why, rather than just "required".
+            if ($gpsError !== null) {
+                $errors[$id] = $gpsError;
             }
 
             // "Pick 2 to 4" was enforced only by the web page's own JavaScript,
@@ -481,6 +506,75 @@ class FormSchemaService
         }
 
         return ['snapshot' => $snapshot, 'errors' => $errors];
+    }
+
+    /**
+     * Validate and normalise one `gps` answer: {lat, lng, accuracy, captured_at}.
+     * Accepts the decoded object or its JSON string. An empty value comes back
+     * as null with no error, so the mandatory check stays with the caller.
+     *
+     * captured_at may be ISO-8601 or an epoch timestamp (seconds or, as
+     * expo-location reports it, milliseconds); missing means "now".
+     *
+     * @return array{value: ?array, error: ?string}
+     */
+    public function normalizeGps(array $element, $value): array
+    {
+        if (is_string($value)) {
+            $value = json_decode($value, true) ?? $value;
+        }
+
+        if ($this->conditions->isEmptyValue($value)) {
+            return ['value' => null, 'error' => null];
+        }
+
+        $invalid = ['value' => null, 'error' => 'Tap to stamp your current location.'];
+
+        if (!is_array($value)) {
+            return $invalid;
+        }
+
+        $lat      = $value['lat'] ?? null;
+        $lng      = $value['lng'] ?? null;
+        $accuracy = $value['accuracy'] ?? null;
+
+        $coordsOk   = is_numeric($lat) && is_numeric($lng)
+            && is_finite((float) $lat) && is_finite((float) $lng)
+            && $lat >= -90 && $lat <= 90 && $lng >= -180 && $lng <= 180;
+        $accuracyOk = $accuracy === null
+            || (is_numeric($accuracy) && is_finite((float) $accuracy) && $accuracy >= 0);
+
+        if (!$coordsOk || !$accuracyOk) {
+            return $invalid;
+        }
+
+        $captured = $value['captured_at'] ?? null;
+
+        try {
+            if ($captured === null || $captured === '') {
+                $capturedAt = Carbon::now();
+            } elseif (is_numeric($captured)) {
+                $capturedAt = $captured > 1e11
+                    ? Carbon::createFromTimestampMs((float) $captured)
+                    : Carbon::createFromTimestamp((float) $captured);
+            } elseif (is_string($captured)) {
+                $capturedAt = Carbon::parse($captured);
+            } else {
+                return $invalid;
+            }
+        } catch (\Throwable $e) {
+            return $invalid;
+        }
+
+        return [
+            'value' => [
+                'lat'         => round((float) $lat, 7),
+                'lng'         => round((float) $lng, 7),
+                'accuracy'    => $accuracy === null ? null : round((float) $accuracy, 1),
+                'captured_at' => $capturedAt->toIso8601String(),
+            ],
+            'error' => null,
+        ];
     }
 
     /**

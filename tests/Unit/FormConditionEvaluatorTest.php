@@ -127,4 +127,19 @@ class FormConditionEvaluatorTest extends TestCase
         $schema = ['logic' => 'or', 'groups' => [['logic' => 'and', 'conditions' => []]]];
         $this->assertFalse($this->evaluator->evaluate($schema, ['a' => 'x']));
     }
+
+    public function test_is_empty_and_is_not_empty_on_a_gps_stamp()
+    {
+        $stamp = ['lat' => 3.1390123, 'lng' => 101.6868553, 'accuracy' => null, 'captured_at' => '2026-09-28T09:41:07+08:00'];
+
+        $this->assertTrue($this->evaluator->evaluate($this->single('g', 'is_not_empty'), ['g' => $stamp]));
+        $this->assertFalse($this->evaluator->evaluate($this->single('g', 'is_empty'), ['g' => $stamp]));
+
+        // Null Island (0, 0) is a real place, not an empty answer.
+        $this->assertTrue($this->evaluator->evaluate($this->single('g', 'is_not_empty'), ['g' => ['lat' => 0, 'lng' => 0]]));
+
+        $this->assertTrue($this->evaluator->evaluate($this->single('g', 'is_empty'), ['g' => null]));
+        $this->assertTrue($this->evaluator->evaluate($this->single('g', 'is_empty'), []));
+        $this->assertFalse($this->evaluator->evaluate($this->single('g', 'is_not_empty'), ['g' => null]));
+    }
 }

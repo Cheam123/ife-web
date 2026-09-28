@@ -42,6 +42,34 @@
             @endforeach
         </div>
 
+    @elseif($type === 'gps')
+        {{-- Before the generic array branch: a stamp is one object, not a tag list. --}}
+        @if(is_array($value) && isset($value['lat'], $value['lng']))
+            @php
+                try {
+                    $gpsAt = !empty($value['captured_at'])
+                        ? \Illuminate\Support\Carbon::parse($value['captured_at'])->setTimezone(config('app.timezone'))->format('j M Y, g:i A')
+                        : null;
+                } catch (\Throwable $e) {
+                    $gpsAt = null;
+                }
+            @endphp
+            <div class="rs-field-value">
+                <i class="mdi mdi-map-marker-outline me-1 text-muted"></i>{{ $value['lat'] }}, {{ $value['lng'] }}
+                <a href="https://www.google.com/maps?q={{ $value['lat'] }},{{ $value['lng'] }}" target="_blank" rel="noopener" class="ms-1 small">Open in Maps</a>
+            </div>
+            @if(isset($value['accuracy']) || $gpsAt)
+                <div class="text-muted small">
+                    {{ collect([
+                        isset($value['accuracy']) ? '±' . round((float) $value['accuracy']) . ' m' : null,
+                        $gpsAt,
+                    ])->filter()->implode(' · ') }}
+                </div>
+            @endif
+        @else
+            <span class="rs-field-empty">&mdash;</span>
+        @endif
+
     @elseif(is_array($value))
         <div class="rs-tag-list">
             @foreach($value as $item)

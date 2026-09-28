@@ -247,6 +247,144 @@ class FormSchemaServiceTest extends TestCase
         $this->assertNotEmpty($this->service->validateDefinition(['schema_version' => 2, 'groups' => [], 'elements' => []]));
     }
 
+    private function gpsSchema(bool $mandatory = true): array
+    {
+        return [
+            'schema_version' => 2,
+            'groups'         => [],
+            'elements'       => [
+                ['id' => 'el_visit', 'kind' => 'field', 'type' => 'select', 'label' => 'Visit type',
+                 'mandatory' => false, 'values' => ['On site', 'Remote'], 'group_id' => null, 'order' => 10,
+                 'visible_when' => null],
+                ['id' => 'el_site', 'kind' => 'field', 'type' => 'gps', 'label' => 'Site location',
+                 'mandatory' => $mandatory, 'values' => [], 'group_id' => null, 'order' => 20,
+                 'capture_mode' => 'auto',
+                 'visible_when' => [
+                     'logic'  => 'or',
+                     'groups' => [['logic' => 'and', 'conditions' => [
+                         ['field' => 'el_visit', 'operator' => 'equals', 'value' => 'On site'],
+                     ]]],
+                 ]],
+            ],
+        ];
+    }
+
+    public function test_normalize_gps_accepts_and_rounds_a_valid_stamp()
+    {
+        $element = ['label' => 'Site location'];
+
+        $result = $this->service->normalizeGps($element, [
+            'lat'         => 3.139012345678,
+            'lng'         => 101.686855312345,
+            'accuracy'    => 12.46,
+            'captured_at' => '2026-09-28T09:41:07+08:00',
+        ]);
+
+        $this->assertNull($result['error']);
+        $this->assertSame(3.1390123, $result['value']['lat']);
+        $this->assertSame(101.6868553, $result['value']['lng']);
+        $this->assertSame(12.5, $result['value']['accuracy']);
+        $this->assertSame('2026-09-28T09:41:07+08:00', $result['value']['captured_at']);
+
+        // JSON string input, null accuracy, missing captured_at, boundary coords.
+        $result = $this->service->normalizeGps($element, '{"lat":-90,"lng":180,"accuracy":null}');
+        $this->assertNull($result['error']);
+        $this->assertSame(-90.0, $result['value']['lat']);
+        $this->assertSame(180.0, $result['value']['lng']);
+        $this->assertNull($result['value']['accuracy']);
+        $this->assertNotEmpty($result['value']['captured_at']);
+
+        // expo-location reports its timestamp in epoch milliseconds.
+        $result = $this->service->normalizeGps($element, ['lat' => 1, 'lng' => 2, 'captured_at' => 1790000000000]);
+        $this->assertNull($result['error']);
+        $this->assertSame(1790000000, strtotime($result['value']['captured_at']));
+
+        // Empty stays empty with no error: mandatory is the caller's call.
+        $this->assertSame(['value' => null, 'error' => null], $this->service->normalizeGps($element, null));
+        $this->assertSame(['value' => null, 'error' => null], $this->service->normalizeGps($element, '{}'));
+    }
+
+    public function test_normalize_gps_rejects_out_of_range_and_garbage()
+    {
+        $element = ['label' => 'Site location'];
+        $bad     = [
+            ['lat' => 200, 'lng' => 101.68],
+            ['lat' => 3.13, 'lng' => -181],
+            ['lat' => 'north', 'lng' => 101.68],
+            ['lat' => 3.13],
+            ['lat' => 3.13, 'lng' => 101.68, 'accuracy' => -5],
+            ['lat' => 3.13, 'lng' => 101.68, 'accuracy' => 'close'],
+            ['lat' => 3.13, 'lng' => 101.68, 'captured_at' => 'not a date'],
+            ['lat' => 3.13, 'lng' => 101.68, 'captured_at' => ['2026']],
+            'Kuala Lumpur',
+            '3.13,101.68',
+            42,
+        ];
+
+        foreach ($bad as $value) {
+            $result = $this->service->normalizeGps($element, $value);
+            $this->assertNull($result['value'], 'Accepted: ' . json_encode($value));
+            $this->assertSame('Tap to stamp your current location.', $result['error']);
+        }
+    }
+
+    public function test_sanitize_answers_validates_gps_fields()
+    {
+        $schema = $this->gpsSchema();
+
+        // Valid stamp is normalised into the snapshot.
+        $result = $this->service->sanitizeAnswers($schema, [
+            ['id' => 'el_visit', 'value' => 'On site'],
+            ['id' => 'el_site', 'value' => ['lat' => 3.13901234567, 'lng' => 101.68685531, 'accuracy' => 8]],
+        ]);
+        $this->assertSame([], $result['errors']);
+        $site = collect($result['snapshot'])->keyBy('id')['el_site'];
+        $this->assertSame(3.1390123, $site['value']['lat']);
+        $this->assertSame(8.0, $site['value']['accuracy']);
+
+        // Mandatory, visible and empty: required. An empty JSON object counts as empty.
+        foreach ([null, '', '{}'] as $empty) {
+            $result = $this->service->sanitizeAnswers($schema, [
+                ['id' => 'el_visit', 'value' => 'On site'],
+                ['id' => 'el_site', 'value' => $empty],
+            ]);
+            $this->assertSame('Site location is required.', $result['errors']['el_site'] ?? null);
+        }
+
+        // Out of range: the specific message wins over "required".
+        $result = $this->service->sanitizeAnswers($schema, [
+            ['id' => 'el_visit', 'value' => 'On site'],
+            ['id' => 'el_site', 'value' => ['lat' => 200, 'lng' => 101.68]],
+        ]);
+        $this->assertSame('Tap to stamp your current location.', $result['errors']['el_site']);
+
+        // Hidden: the value is discarded, even a bad one, and nothing is required.
+        $result = $this->service->sanitizeAnswers($schema, [
+            ['id' => 'el_visit', 'value' => 'Remote'],
+            ['id' => 'el_site', 'value' => ['lat' => 200, 'lng' => 101.68]],
+        ]);
+        $this->assertSame([], $result['errors']);
+        $site = collect($result['snapshot'])->keyBy('id')['el_site'];
+        $this->assertNull($site['value']);
+        $this->assertTrue($site['hidden']);
+    }
+
+    public function test_validate_definition_checks_gps_capture_mode()
+    {
+        $schema = $this->gpsSchema();
+        $this->assertSame([], $this->service->validateDefinition($schema));
+
+        // Missing capture_mode falls back to auto.
+        unset($schema['elements'][1]['capture_mode']);
+        $this->assertSame([], $this->service->validateDefinition($schema));
+
+        $schema['elements'][1]['capture_mode'] = 'manual';
+        $this->assertSame([], $this->service->validateDefinition($schema));
+
+        $schema['elements'][1]['capture_mode'] = 'on_submit';
+        $this->assertNotEmpty($this->service->validateDefinition($schema));
+    }
+
     public function test_resolve_field_permissions_cascades_group_overrides()
     {
         $schema = $this->v2Schema();

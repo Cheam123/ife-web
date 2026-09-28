@@ -32,11 +32,11 @@
 <div class="legal-page">
     <div class="legal-wrap">
 
-        <img src="{{ URL::asset('assets/images/logo-eciatto.png') }}" alt="Eciatto" class="legal-brand">
+        <img src="{{ URL::asset('assets/brand/ronda-logo.svg') }}" alt="Ronda" class="legal-brand">
 
         <div class="legal-card">
             <h1>@yield('legal-heading')</h1>
-            <p class="legal-effective">Last updated: 9 September 2026</p>
+            <p class="legal-effective">Last updated: 28 September 2026</p>
 
             @yield('legal-content')
         </div>

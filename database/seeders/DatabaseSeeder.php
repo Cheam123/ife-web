@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             NatureOfBusinessSeeder::class,
             IFEStatusSeeder::class,
+            IfeAreaSeeder::class,
         ]);
     }
 }

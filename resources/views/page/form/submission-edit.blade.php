@@ -117,6 +117,11 @@
                     const current = $input.attr('data-current');
                     return current ? JSON.parse(current) : null;
                 }
+                case 'gps': {
+                    // {lat, lng, accuracy, captured_at}, written by form-gps.js.
+                    const raw = $(`.gps-input[data-el-id="${el.id}"]`).val();
+                    try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+                }
                 default:
                     return $(`.form-input[data-el-id="${el.id}"]`).val() ?? null;
             }
@@ -137,7 +142,7 @@
             return visibility;
         }
 
-        $(document).on('change input', '.form-input, .multi-choice-input, .multi-select-input, .checkbox-input, .file-input', function () {
+        $(document).on('change input', '.form-input, .multi-choice-input, .multi-select-input, .checkbox-input, .file-input, .gps-input', function () {
             applyVisibility();
         });
         applyVisibility();

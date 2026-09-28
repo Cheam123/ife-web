@@ -538,6 +538,10 @@
                                 <button type="button" class="palette-item" data-palette="field" data-type="user" data-label="Person">
                                     <i class="mdi mdi-account-outline"></i> Person
                                 </button>
+                                {{-- Device location, captured on open or on tap; never typed. --}}
+                                <button type="button" class="palette-item" data-palette="field" data-type="gps" data-label="Location Stamp">
+                                    <i class="mdi mdi-crosshairs-gps"></i> Location Stamp
+                                </button>
                             </div>
                         </div>
                     </div>

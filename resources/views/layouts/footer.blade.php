@@ -2,7 +2,7 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-sm-6">
-                <script>document.write(new Date().getFullYear())</script> © Eciatto Sdn. Bhd.
+                <script>document.write(new Date().getFullYear())</script> © Ronda
             </div>
         </div>
     </div>

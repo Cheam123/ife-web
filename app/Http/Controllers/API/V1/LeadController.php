@@ -25,8 +25,11 @@ use App\Models\User;
 use App\Models\IfeArea;
 use App\Models\DocumentUpload;
 use App\Repositories\S3ClientRepo;
+use App\Jobs\RefreshOutletRecommendations;
+use App\Services\Recommendation\RecommendationService;
 
 use Carbon\Carbon;
+use Throwable;
 
 class LeadController extends Controller
 {
@@ -116,8 +119,26 @@ class LeadController extends Controller
             return view('errors.custom-error', compact('response'));
         }
 
-        $customerDetail = Leads::with('documentUploads')->findOrFail($id);
-        
+        $user           = Auth::guard('web')->user();
+        $customerDetail = Leads::with([
+                                    'documentUploads',
+                                    'visits.createdBy:id,name',
+                                    'orders.lines.product',
+                                    'orders.createdBy:id,name',
+                                ])
+                                ->visibleTo($user)
+                                ->findOrFail($id);
+
+        // Managers get a read-only copy of the rep's "Recommended" tab.
+        $recommendation = null;
+        if ($user->seesAllRecords()) {
+            try {
+                $recommendation = app(RecommendationService::class)->forLead($customerDetail);
+            } catch (Throwable $e) {
+                Log::warning('Lead view: recommendations unavailable', ['lead_id' => $id, 'error' => $e->getMessage()]);
+            }
+        }
+
         if ($customerDetail->state_id) {
             $states = States::where('id',$customerDetail->state_id)->get();
         } else {
@@ -136,7 +157,7 @@ class LeadController extends Controller
         $tmenu_part2 = trans('translation.customer');
         $tmenu_part3 = trans('translation.view') . ' (' . trans('translation.id').':'.$customerDetail->id . ')';
 
-        return view('page.leads.view', compact('ifeareas','states','cities','customerDetail','tmenu_part1','tmenu_part2','tmenu_part3'));
+        return view('page.leads.view', compact('ifeareas','states','cities','customerDetail','recommendation','tmenu_part1','tmenu_part2','tmenu_part3'));
     }
 
     public function create()
@@ -172,7 +193,7 @@ class LeadController extends Controller
 
         DB::beginTransaction();
         try {
-            $remark = $validatedData['remark'] ? $validatedData['remark'] : '';
+            $remark = $validatedData['remark'] ?? '';
             // $remark = self::turnUrlIntoHyperlink($remark); // only apply to ckeditor
 
             $lead_detail = new Leads();
@@ -193,6 +214,12 @@ class LeadController extends Controller
             $lead_detail->postcode          = isset($validatedData['postcode']) ? $validatedData['postcode'] : NULL;
             $lead_detail->ife_area_id       = isset($validatedData['ifearea']) ? $validatedData['ifearea'] : NULL;
             $lead_detail->remark            = isset($validatedData['remark']) ? $remark : NULL;
+
+            if ($error = $this->applyOutletProfile($lead_detail, $validatedData, $request)) {
+                DB::rollBack();
+                return redirect()->back()->withErrors(['gps' => $error])->withInput();
+            }
+
             $lead_detail->save();
 
             if (null !== $request->file('file')) {
@@ -232,8 +259,8 @@ class LeadController extends Controller
             return view('errors.custom-error', compact('response'));
         }
 
-        $customerDetail = Leads::findOrFail($id);
-        
+        $customerDetail = Leads::visibleTo(Auth::guard('web')->user())->findOrFail($id);
+
         $states = Cache::rememberForever('states', function () {
             return States::get();
         });
@@ -265,10 +292,10 @@ class LeadController extends Controller
         DB::beginTransaction();
         try {
 
-            $remark = $validatedData['remark'] ? $validatedData['remark'] : '';
+            $remark = $validatedData['remark'] ?? '';
             // $remark = self::turnUrlIntoHyperlink($remark); // only apply to ckeditor
 
-            $lead_detail = Leads::where('id', $validatedData['id'])->lockForUpdate()->first();
+            $lead_detail = Leads::visibleTo(Auth::guard('web')->user())->where('id', $validatedData['id'])->lockForUpdate()->firstOrFail();
             $lead_detail->receiving_date    = $validatedData['receive_date'];
             $lead_detail->business_name     = $validatedData['business_name'];
             $lead_detail->customer_id       = $validatedData['customer_id'];
@@ -283,9 +310,17 @@ class LeadController extends Controller
             $lead_detail->postcode          = isset($validatedData['postcode']) ? $validatedData['postcode'] : NULL;
             $lead_detail->ife_area_id       = isset($validatedData['ifearea']) ? $validatedData['ifearea'] : NULL;
             $lead_detail->remark            = isset($validatedData['remark']) ? $remark : NULL;
+
+            if ($error = $this->applyOutletProfile($lead_detail, $validatedData, $request)) {
+                DB::rollBack();
+                return redirect()->back()->withErrors(['gps' => $error])->withInput();
+            }
+
             $lead_detail->save();
             DB::commit();
-            
+
+            $this->refreshRecommendationsIfProfileChanged($lead_detail);
+
             alert()->success(trans('translation.success'), trans('translation.successfully_update'))->iconHtml('<i class="far fa-thumbs-up"></i>')->showConfirmButton()->focusConfirm(true);
             return redirect()->route('lead.index')->with('success', trans('translation.update_success'));
 
@@ -313,7 +348,7 @@ class LeadController extends Controller
         }
 
         $id    = $request->id;
-        $lead  = Leads::findOrFail($id);
+        $lead  = Leads::visibleTo(Auth::guard('web')->user())->findOrFail($id);
         $lead->delete();
         return redirect()->route('lead.index')->with('success', trans('translation.delete_success'));
 
@@ -362,6 +397,35 @@ class LeadController extends Controller
         }
        
         return redirect()->back();
+    }
+
+    /**
+     * Size band, seats, segment and the captured location. Refreshes the
+     * outlet's recommendations once saved if any of them changed.
+     *
+     * @return string|null the location's validation error
+     */
+    private function applyOutletProfile(Leads $lead, array $validatedData, Request $request): ?string
+    {
+        $lead->size_band = $validatedData['size_band'] ?? NULL;
+        $lead->seats     = isset($validatedData['seats']) && $validatedData['seats'] !== '' ? (int) $validatedData['seats'] : NULL;
+        $lead->segment   = $validatedData['segment'] ?? NULL;
+
+        // The form always posts the field (prefilled with the saved stamp),
+        // so an empty value really means "no location".
+        if ($request->has('gps') && ($error = $lead->applyLocationStamp($request->input('gps')))) {
+            return $error;
+        }
+
+        return null;
+    }
+
+    /** After a save: the outlet's recommendations follow its profile. */
+    private function refreshRecommendationsIfProfileChanged(Leads $lead): void
+    {
+        if ($lead->wasChanged(['size_band', 'seats', 'segment', 'business_category', 'ife_area_id'])) {
+            RefreshOutletRecommendations::dispatch([$lead->id]);
+        }
     }
 
     private function upload(Request $request, $lead_id)
