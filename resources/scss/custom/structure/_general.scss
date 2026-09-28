@@ -1,0 +1,386 @@
+.bgimg {
+  content: "";
+  background: url('/assets/images/bg-dallacorte.webp') no-repeat center center fixed;
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+}
+
+.card2 {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  word-wrap: break-word;
+  background-clip: border-box;
+  border: 0 solid #000000;
+  border-radius: 0.25rem;
+  background-color: white;
+  box-shadow: 5px 5px 20px 5px rgb(183, 183, 183); // h-offset, v-offset, blur, spread, color, (inset,initial,inherit)
+  font-size: small;
+}
+
+.card3 {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  word-wrap: break-word;
+  background-clip: border-box;
+  border: 0 solid #000000;
+  border-radius: 0.25rem;
+  background-color: white;
+  box-shadow: 0px 2px 2px 1px rgb(183, 183, 183);
+}
+
+.custom-font-medium {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.custom-font-small {
+  font-size: small;
+  line-height: 1.5;
+}
+
+.custom-font-xsmall {
+  font-size: 12px;
+  font-family: Tahoma;
+}
+
+.custom-font-xxsmall {
+  font-size: 11px;
+  font-family: Tahoma;
+}
+
+.custom-hide-section {
+  // background-color: rgb(251, 210, 210);
+  display: none;
+  visibility: hidden;
+}
+
+.custom-text-family-1 {
+  font-family: Microsoft Sans Serif;
+}
+
+.custom-table-tr-td-font-color {
+  color: rgb(80, 80, 247);
+}
+
+.custom-table-tr-td-font-color2 {
+  color: rgb(172, 4, 26);
+}
+
+.custom_float{
+  display: block;
+  position: fixed;
+  bottom: 20px;
+  right: 85px;
+  z-index: 99;
+  border: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.custom-button-shadow {
+  box-shadow: 1px 1px 5px 1px rgb(183, 183, 183);
+}
+
+.custom-shadow {
+  box-shadow: 3px 3px 10px 3px rgb(183, 183, 183);
+}
+
+.custom-label {
+  background-color: coral;
+  padding: 4px 10px 4px 10px; //top right bottom left
+  color:white;
+  border-radius: 6px;
+  box-shadow: 3px 3px 10px 3px rgb(183, 183, 183);
+  width: 200px;
+}
+
+.custom-label1 {
+  color:rgb(13, 13, 13);
+  text-transform: uppercase;
+}
+
+.custom-label2 {
+  background-color: rgb(0, 132, 13);
+  padding: 4px 10px 4px 10px; //top right bottom left
+  color:white;
+  border-radius: 6px;
+  box-shadow: 3px 3px 10px 3px rgb(183, 183, 183);
+}
+
+.custom-label3 {
+  background-color: black;
+  padding: 4px 10px 4px 10px; //top right bottom left
+  color:white;
+  box-shadow: 3px 3px 10px 3px rgb(183, 183, 183);
+}
+
+.material-icons {
+  font-family: "Material Icons Outlined";
+  font-weight: 400;
+  font-style: normal;
+  font-size: 24px;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "liga";
+}
+
+.custom-expend-all {
+  display: block;
+  position: fixed;
+  top: 135px;
+  right: 39px;
+  z-index: 999;
+  font-size: 2px;
+  border: none;
+  outline: none;
+  background-color: rgb(28, 147, 50);
+  color: white;
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 4px;
+}
+.custom-expend-all:hover {
+  background-color: rgb(199, 237, 124);
+  color: grey;
+}
+
+.custom-collapsed-all {
+  display: block;
+  position: fixed;
+  top: 135px;
+  right: 82px;
+  z-index: 999;
+  font-size: 2px;
+  border: none;
+  outline: none;
+  background-color: rgb(197, 148, 23);
+  color: white;
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 4px;
+}
+.custom-collapsed-all:hover {
+  background-color: rgb(246, 242, 146);
+  color: grey;
+}
+
+.custom-task-expend-all {
+  display: block;
+  position: fixed;
+  top: 135px;
+  right: 235px;
+  z-index: 999;
+  font-size: 2px;
+  border: none;
+  outline: none;
+  background-color: rgb(28, 147, 50);
+  color: white;
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 4px;
+}
+.custom-task-expend-all:hover {
+  background-color: rgb(199, 237, 124);
+  color: grey;
+}
+.custom-task-collapsed-all {
+  display: block;
+  position: fixed;
+  top: 135px;
+  right: 275px;
+  z-index: 999;
+  font-size: 2px;
+  border: none;
+  outline: none;
+  background-color: rgb(197, 148, 23);
+  color: white;
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 4px;
+}
+.custom-task-collapsed-all:hover {
+  background-color: rgb(246, 242, 146);
+  color: grey;
+}
+.custom-task {
+  display: block;
+  position: fixed;
+  top: 128px;
+  right: 82px;
+  z-index: 999;
+  font-size: 2px;
+  border: none;
+  outline: none;
+  color: white;
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 4px;
+}
+
+.custom-button-position {
+  display: block;
+  font-size: 2px;
+  border: none;
+  outline: none;
+  background-color: red;
+  color: white;
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 4px;
+}
+.custom-button-position:hover {
+  background-color: rgb(211, 118, 118);
+  color: rgb(245, 15, 15);
+}
+
+.custom-align-button-sidebyside {
+  display: inline-block; 
+  vertical-align: middle;
+}
+
+.myfooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.scrollToTopBtn {
+  background-color: rgb(178, 8, 8);
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 18px;
+  width: 48px;
+
+  /* place it at the bottom right corner */
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  /* keep it at the top of everything else */
+  z-index: 100;
+  /* hide with opacity */
+  opacity: 0;
+  /* also add a translate effect */
+  transform: translateY(100px);
+  /* and a transition */
+  transition: all 0.5s ease;
+}
+
+.showBtn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.btn-xm {
+  padding:.18rem .42rem;
+  font-size:.68rem;
+  border-radius:.2rem
+}
+
+//
+// Google font - IBM Plex Sans
+//
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+.blink_me {
+    animation: blinker 3s linear infinite;
+  }
+  
+@keyframes blinker {
+  50% {
+    opacity: 0;
+  }
+}
+
+.zoom-in-out-box1 {
+  animation: zoom-in-zoom-out 1s ease infinite;
+}
+
+.zoom-in-out-box2 {
+  animation: zoom-in-zoom-out 0.5s ease infinite;
+}
+
+@keyframes zoom-in-zoom-out {
+  0% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.2, 1.2);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+.fa-rocket {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.btn-nav-accordion.collapsed .fa-rocket {
+transform: rotate(90deg);
+cursor: pointer;
+}
+
+.fa-fan {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-nav-accordion.collapsed .fa-fan {
+  transform: rotate(360deg);
+  cursor: pointer;
+}
+
+.custom-cursor {
+  cursor: pointer;
+}
+
+.select2-search__field {
+  background-color: rgb(246, 249, 231);
+  font-size: 13px;
+}
+.select2-results { 
+  background-color: rgb(227, 232, 250);
+  font-size: 13px;
+}
+
+.text-danger {
+  font-size: 11px;
+}
+
+.white-font {
+  color: white!important;
+}
+
+.bg-dark-green {
+  background-color: #1f7858!important;
+}
+
+.form-control-xsm {
+  min-height: calc(1.8em + 0.5rem + 2px);
+  padding: 0.25rem 0.5rem;
+  font-size: .5875rem;
+  border-radius: 0.2rem;
+}
+
+.td-fit {
+  white-space: nowrap;
+  width: 1%;
+  text-overflow: ellipsis;
+  padding-right: 0.5rem!important;
+  padding-left: 0.5rem!important;
+}

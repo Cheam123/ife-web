@@ -1,0 +1,1 @@
+<div style="padding: 30px;"><img src="{{ config('app.url') }}/assets/images/maintenance.png"></div>
