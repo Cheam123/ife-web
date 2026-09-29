@@ -12,9 +12,16 @@ use App\Http\Requests\UserRequest;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Controllers\Controller;
 use App\Helpers\Helper;
+use App\Services\AdminDashboardService;
 
 class UsersController extends Controller
 {
+    /** ?focus= filters from the admin Overview's attention list. */
+    public const FOCUS = [
+        'quiet'  => 'Field reps who have not signed in for ' . AdminDashboardService::QUIET_DAYS . ' days',
+        'no_app' => 'People who cannot get app notifications (not signed in to the app on a phone, or notifications off)',
+    ];
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -47,13 +54,24 @@ class UsersController extends Controller
             $users = $users->where('email', 'like' ,'%'.$request->get('email').'%');
         }
 
+        // People links on the admin Overview: quiet reps, and people the app cannot notify.
+        $focusLabel = self::FOCUS[$request->get('focus')] ?? null;
+        if ($request->get('focus') === 'quiet') {
+            $users = $users->where('type', User::TYPE_USER)
+                           ->where(fn ($q) => $q->whereNull('last_login_date')
+                                                ->orWhere('last_login_date', '<', now()->subDays(AdminDashboardService::QUIET_DAYS)));
+        } elseif ($request->get('focus') === 'no_app') {
+            $users = $users->where('type', '!=', User::TYPE_ADMIN)
+                           ->where(fn ($q) => $q->whereNull('fcm_token')->orWhere('fcm_token', ''));
+        }
+
         $users       = $users->orderBy('name','asc')->get();
         $total       = $users->count();
         $tmenu_part1 = trans('translation.Users');
         $tmenu_part2 = trans('translation.Users');
         $tmenu_part3 = trans('translation.total').':'.$total;
 
-        return view('page.users.index', compact('users','request','total','tmenu_part1','tmenu_part2','tmenu_part3'));
+        return view('page.users.index', compact('users','request','total','focusLabel','tmenu_part1','tmenu_part2','tmenu_part3'));
     }
 
     public function view($id)

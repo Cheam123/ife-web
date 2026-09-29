@@ -97,11 +97,11 @@ $agent = new Agent();
                         </li>
                         @endif
 
-                        <!-- Lead/Customer -->
+                        <!-- Outlets (leads) -->
                         @if(Auth::guard('web')->user()->can('view_lead') || Auth::guard('web')->user()->can('edit_lead') || Auth::guard('web')->user()->can('create_lead'))
                         <li class="nav-item">
                             <a class="nav-link {{ \App\Helpers\Helper::setActive('v1/lead*', 'mm-active') }}" href="{{ route('lead.index') }}">
-                                <i class="mdi mdi-account-group-outline"><span class="menu-font-style">Lead/Customer</span></i>
+                                <i class="mdi mdi-account-group-outline"><span class="menu-font-style">Outlets</span></i>
                             </a>
                         </li>
                         @endif
@@ -137,13 +137,13 @@ $agent = new Agent();
                         </li>
                         @endif --}}
 
-                        <!-- IFE Report -->
+                        <!-- Visits (IFE reports) -->
                         @if(Auth::guard('web')->user()->can('ife_report'))
                         <li class="nav-item">
                             <a class="nav-link {{ \App\Helpers\Helper::setActive('v1/ifereport*', 'mm-active') }}"
                                                                         href="{{ route('ifereport.index') }}">
                                 <i class="uil-clipboard-notes me-2">
-                                    <span class="menu-font-style">IFE Report</span>
+                                    <span class="menu-font-style">Visits</span>
                                 </i>
                             </a>
                         </li>
@@ -202,6 +202,9 @@ $agent = new Agent();
                                 @endif
                                 @if(Auth::guard('web')->user()->can('manage_area'))
                                 <a href="{{ route('area.index') }}" class="dropdown-item {{ \App\Helpers\Helper::setActive('v1/area*', 'mm-active') }}">IFE Areas</a>
+                                @endif
+                                @if(Auth::guard('web')->user()->isAdmin())
+                                <a href="{{ route('admin.app-errors') }}" class="dropdown-item {{ \App\Helpers\Helper::setActive('app-errors*', 'mm-active') }}">App errors</a>
                                 @endif
                             </div>
                         </li>

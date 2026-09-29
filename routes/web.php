@@ -31,6 +31,7 @@ Route::get('/index', [App\Http\Controllers\HomeController::class, 'index']);
 Route::post('/index/digest', [App\Http\Controllers\HomeController::class, 'regenerateDigest'])
     ->middleware('throttle:6,1')
     ->name('dashboard.digest');
+Route::get('/app-errors', [App\Http\Controllers\AppErrorController::class, 'index'])->name('admin.app-errors');
 
 Route::group(['prefix' => 'v1'], function () {
 

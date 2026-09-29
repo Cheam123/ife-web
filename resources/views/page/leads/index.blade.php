@@ -130,6 +130,10 @@
 <div class="card">
     <div class="card-header">
         <form class="form" id="filter" action="{{ route('lead.index') }}" method="GET">
+            {{-- Keeps a Data health filter (from the admin Overview) while searching --}}
+            @if($gapLabel)
+                <input type="hidden" name="gap" value="{{ $request->gap }}">
+            @endif
             <div class="row">
                 <div class="col-md-3 col-xl-3" style="padding-top: 5px; padding-bottom: 2px">
                     <!-- Creation date -->
@@ -189,6 +193,12 @@
     </div>
 
     <div class="card-body">
+        @if($gapLabel)
+            <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2 py-2" role="status">
+                <span>Showing: {{ $gapLabel }} ({{ number_format($lead_detail->total()) }})</span>
+                <a href="{{ route('lead.index', $request->except(['gap', 'page'])) }}" class="fw-semibold">Show all outlets</a>
+            </div>
+        @endif
         {{ $lead_detail->withQueryString()->links() }}
         <div style="overflow-x:auto; white-space: nowrap;">
             <table class="table table-sm custom-font-small" style="width:100%; border-collapse: collapse; box-shadow: 1px 1px 3px 1px rgb(183, 183, 183);">

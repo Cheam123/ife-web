@@ -30,7 +30,7 @@
                                                                     {{ \App\Helpers\Helper::setActive('v1/leads/edit*','mm-active') }}
                                                                     {{ \App\Helpers\Helper::setActive('v1/leads/view*','mm-active') }}">
                         <i class="mdi mdi-account-group-outline"></i>
-                        <span class="custom-font-small">Lead/Customer</span>
+                        <span class="custom-font-small">Outlets</span>
                     </a>
                 </li>
                 @endif
@@ -53,12 +53,12 @@
                 </li>
                 @endif
 
-                <!-- IFE Report -->
+                <!-- Visits (IFE reports) -->
                 @if(Auth::guard('web')->user()->can('ife_report'))
                 <li class="{{ \App\Helpers\Helper::setActive('v1/ifereport*','mm-active') }}">
                     <a href="{{ route('ifereport.index') }}" class="{{ \App\Helpers\Helper::setActive('v1/ifereport*','mm-active') }}">
                         <i class="uil-clipboard-notes"></i>
-                        <span class="custom-font-small">IFE Report</span>
+                        <span class="custom-font-small">Visits</span>
                     </a>
                 </li>
                 @endif
@@ -78,6 +78,15 @@
                         <span class="custom-font-small">Forms</span>
                     </a>
                     <ul class="sub-menu" aria-expanded="true">
+                        {{-- Same gate as the top menu's Form Creation item --}}
+                        @if(Auth::guard('web')->user()->can('form_creation') || Auth::guard('web')->user()->can('form_admin'))
+                        <li>
+                            <a href="{{ route('form.index') }}" class="{{ \App\Helpers\Helper::setActive('form/index*','mm-active') }}">
+                                <i class="fas fa-arrow-circle-right"></i>
+                                <span class="custom-font-small">Form Creation</span>
+                            </a>
+                        </li>
+                        @endif
                         {{-- No permission gate: the page lists only forms the user may
                              submit, decided per form by its own "Who can submit" setting. --}}
                         <li>
@@ -146,6 +155,16 @@
                     <a href="{{ route('area.index') }}" class="{{ \App\Helpers\Helper::setActive('v1/area*','mm-active') }}">
                         <i class="mdi mdi-map-marker-radius-outline"></i>
                         <span class="custom-font-small">IFE Areas</span>
+                    </a>
+                </li>
+                @endif
+
+                <!-- App errors (reported by the mobile app) -->
+                @if(Auth::guard('web')->user()->isAdmin())
+                <li class="{{ \App\Helpers\Helper::setActive('app-errors*','mm-active') }}">
+                    <a href="{{ route('admin.app-errors') }}" class="{{ \App\Helpers\Helper::setActive('app-errors*','mm-active') }}">
+                        <i class="mdi mdi-alert-circle-outline"></i>
+                        <span class="custom-font-small">App errors</span>
                     </a>
                 </li>
                 @endif

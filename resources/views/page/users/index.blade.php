@@ -20,6 +20,10 @@
                 <div class="ibox-content" style="padding-top:10px; display:none;">
                     <form class="form" id="filter" action="{{ route('users.index') }}" method="GET">
                         <input type="hidden" name="active" id="active" value="{{ old('active',$request->active) }}">
+                        {{-- Keeps an attention filter (from the admin Overview) while searching --}}
+                        @if($focusLabel)
+                            <input type="hidden" name="focus" value="{{ $request->focus }}">
+                        @endif
                         <div class="row">
                             <div class="col-md-3 col-xl-3" style="padding-top: 3px; padding-bottom: 3px">
                                 <input type="text" class="form-control form-control-sm" name="name" placeholder="Name" value="{{ old('name',$request->name) }}">
@@ -50,6 +54,13 @@
             </div>
 
             <hr />
+
+            @if($focusLabel)
+                <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2 py-2" role="status">
+                    <span>Showing: {{ $focusLabel }} ({{ number_format($total) }})</span>
+                    <a href="{{ route('users.index', $request->except(['focus'])) }}" class="fw-semibold">Show everyone</a>
+                </div>
+            @endif
 
             <div class="breadcrumb-wrapper col-s-12">
                 <div style="padding-top : 10px; padding-bottom : 5px; font-weight:600;">

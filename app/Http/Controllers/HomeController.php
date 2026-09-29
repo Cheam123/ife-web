@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DailyDigest;
+use App\Services\AdminDashboardService;
 use App\Services\DailyDigestService;
 use App\Services\DashboardService;
 
@@ -27,25 +28,35 @@ class HomeController extends Controller
     }
 
     /**
-     * Admins and Managers get the team dashboard (every task, the team
-     * activity table, the AI digest); a Field Rep gets the same tiles and
-     * chart for their own work.
+     * Admins land on the Overview: setup, adoption and system status.
+     * ?tab=team shows them the team dashboard, which is what Managers get
+     * (every task, the team activity table, the AI digest). A Field Rep gets
+     * the same tiles and chart for their own work.
      */
     private function dashboard(Request $request)
     {
-        $user   = Auth::guard('web')->user();
-        $isTeam = $user->seesAllRecords();
+        $user    = Auth::guard('web')->user();
+        $isAdmin = $user->isAdmin();
 
+        if ($isAdmin && $request->query('tab') !== 'team') {
+            $overview = app(AdminDashboardService::class)->overview($user);
+
+            return view('page.dashboard-admin', compact('request', 'overview', 'user'));
+        }
+
+        $isTeam  = $user->seesAllRecords();
         $summary = app(DashboardService::class)->summary($isTeam ? null : $user);
         $digest  = $isTeam ? DailyDigest::latestDigest() : null;
 
-        return view('page.dashboard', compact('request', 'summary', 'digest', 'isTeam'));
+        return view('page.dashboard', compact('request', 'summary', 'digest', 'isTeam', 'isAdmin'));
     }
 
     /** "Regenerate" on the digest card: rewrite today's digest now. */
     public function regenerateDigest(DailyDigestService $digests)
     {
-        if (!Auth::guard('web')->user()->seesAllRecords()) {
+        $user = Auth::guard('web')->user();
+
+        if (!$user->seesAllRecords()) {
             abort(403);
         }
 
@@ -55,6 +66,7 @@ class HomeController extends Controller
             ? 'Morning Round-Up rewritten by Claude.'
             : 'Morning Round-Up rewritten from the template' . ($digest->error ? ' (Bedrock error: ' . $digest->error . ')' : ' (Bedrock not configured)') . '.';
 
-        return redirect()->to('/index')->with('digest_status', $message);
+        // The Round-Up card lives on the team dashboard, which is a tab for admins.
+        return redirect()->to($user->isAdmin() ? '/index?tab=team' : '/index')->with('digest_status', $message);
     }
 }

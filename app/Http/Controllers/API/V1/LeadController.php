@@ -33,6 +33,13 @@ use Throwable;
 
 class LeadController extends Controller
 {
+    /** ?gap= filters from the admin Overview's Data health card. */
+    public const GAPS = [
+        'no_location' => 'Outlets without a location stamp',
+        'no_profile'  => 'Outlets without a full profile (type, size, segment or seats missing)',
+        'unassigned'  => 'Outlets with no rep assigned',
+    ];
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -93,8 +100,21 @@ class LeadController extends Controller
         if ($request->get('start') !== NULL) {
             $from = Carbon::parse($request->get('start'))->startOfDay()->format('Y-m-d 00:00:00');
             $to   = Carbon::parse($request->get('end'))->endOfDay()->format('Y-m-d 23:59:59');
-            
+
             $lead_detail = $lead_detail->whereBetween('created_at', [$from, $to]);
+        }
+
+        // Data health links on the admin Overview open the outlets with one gap.
+        $gapLabel = self::GAPS[$request->get('gap')] ?? null;
+        if ($request->get('gap') === 'no_location') {
+            $lead_detail = $lead_detail->where(fn ($q) => $q->whereNull('latitude')->orWhereNull('longitude'));
+        } elseif ($request->get('gap') === 'no_profile') {
+            $lead_detail = $lead_detail->where(fn ($q) => $q->whereNull('business_category')
+                                                            ->orWhereNull('segment')
+                                                            ->orWhereNull('size_band')
+                                                            ->orWhereNull('seats'));
+        } elseif ($request->get('gap') === 'unassigned') {
+            $lead_detail = $lead_detail->whereNull('assign_to');
         }
 
         $total = $lead_detail->count();
@@ -107,7 +127,7 @@ class LeadController extends Controller
         $tmenu_part1 = trans('translation.customer');
         $tmenu_part2 = trans('translation.customer');
 
-        return view('page.leads.index', compact('ifeareas','states','cities','lead_detail','request','tmenu_part1','tmenu_part2'));
+        return view('page.leads.index', compact('ifeareas','states','cities','lead_detail','request','gapLabel','tmenu_part1','tmenu_part2'));
     }
 
     public function view($id)

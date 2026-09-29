@@ -14,35 +14,18 @@
     };
 @endphp
 
-<style>
-    .dash { --surface: #ffffff; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781; --hair: #e1e0d9;
-            --series-1: #2a78d6; --series-2: #eb6834; --critical: #d03b3b; --serious: #ec835a; --good: #0ca30c;
-            font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
-    .dash-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-    .dash-tile { background: var(--surface); border: 1px solid rgba(11,11,11,0.10); border-radius: 8px; padding: 12px 14px; }
-    .dash-tile-label { font-size: 0.78rem; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
-    .dash-tile-value { font-size: 1.6rem; font-weight: 600; line-height: 1.2; margin-top: 4px; }
-    .dash-tile-note { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
-    .dash-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-    .dash-card { background: var(--surface); border: 1px solid rgba(11,11,11,0.10); border-radius: 8px; padding: 14px 16px; height: 100%; }
-    .dash-card h6 { font-size: 0.9rem; font-weight: 600; margin: 0 0 10px; color: var(--ink); }
-    .dash-sub { font-size: 0.75rem; color: var(--muted); }
-    .dash-table { width: 100%; font-size: 0.8rem; border-collapse: collapse; }
-    .dash-table th { color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--hair); padding: 6px 8px; white-space: nowrap; }
-    .dash-table td { border-bottom: 1px solid var(--hair); padding: 6px 8px; vertical-align: top; }
-    .dash-table .num { text-align: right; font-variant-numeric: tabular-nums; }
-    .dash-level { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; white-space: nowrap; color: var(--ink); }
-    .dash-level i { font-size: 1rem; }
-    .dash-digest { font-size: 0.85rem; line-height: 1.5; }
-    .dash-digest .label { font-weight: 600; margin-top: 8px; }
-    .dash-digest ul { padding-left: 18px; margin: 2px 0 0; }
-    .dash-chart-wrap { position: relative; height: 260px; }
-</style>
+@include('page.partials.dashboard-styles')
 
 <div class="dash py-2">
-    <div class="d-flex flex-wrap justify-content-between align-items-baseline mb-3">
-        <h5 class="mb-0">{{ $isTeam ? 'Team dashboard' : 'My dashboard' }}</h5>
-        <span class="dash-sub">Updated {{ \Illuminate\Support\Carbon::parse($summary['generated_at'])->format('j M Y, g:i A') }} &middot; "7 days" is today and the six days before</span>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h5 class="mb-0">{{ $isTeam ? 'Team dashboard' : 'My dashboard' }}</h5>
+            <span class="dash-sub">Updated {{ \Illuminate\Support\Carbon::parse($summary['generated_at'])->format('j M Y, g:i A') }} &middot; "7 days" is today and the six days before</span>
+        </div>
+        {{-- Admins land on the Overview; this is its Team tab --}}
+        @if($isAdmin ?? false)
+            @include('page.partials.dashboard-tabs', ['active' => 'team'])
+        @endif
     </div>
 
     {{-- KPI tiles --}}
@@ -270,8 +253,8 @@
             data: {
                 labels: labels,
                 datasets: [
-                    Object.assign({ label: 'Created', data: trend.map(function (d) { return d.created; }), backgroundColor: '#2a78d6' }, bar),
-                    Object.assign({ label: 'Done', data: trend.map(function (d) { return d.done; }), backgroundColor: '#eb6834' }, bar)
+                    Object.assign({ label: 'Created', data: trend.map(function (d) { return d.created; }), backgroundColor: '#0D729E' }, bar),
+                    Object.assign({ label: 'Done', data: trend.map(function (d) { return d.done; }), backgroundColor: '#D9822B' }, bar)
                 ]
             },
             options: {
@@ -282,13 +265,13 @@
                     legend: {
                         position: 'top',
                         align: 'start',
-                        labels: { color: '#52514e', boxWidth: 10, boxHeight: 10, font: { size: 11 } }
+                        labels: { color: '#3D525C', boxWidth: 10, boxHeight: 10, font: { size: 11 } }
                     },
                     tooltip: {
                         backgroundColor: '#ffffff',
-                        titleColor: '#0b0b0b',
-                        bodyColor: '#52514e',
-                        borderColor: 'rgba(11,11,11,0.15)',
+                        titleColor: '#0E2A36',
+                        bodyColor: '#3D525C',
+                        borderColor: 'rgba(14,42,54,0.15)',
                         borderWidth: 1,
                         padding: 8,
                         boxWidth: 10,
@@ -296,11 +279,11 @@
                     }
                 },
                 scales: {
-                    x: { grid: { display: false, drawBorder: true, borderColor: '#c3c2b7' }, ticks: { color: '#898781', font: { size: 11 } } },
+                    x: { grid: { display: false, drawBorder: true, borderColor: '#C9C3B6' }, ticks: { color: '#5B6B72', font: { size: 11 } } },
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#e1e0d9', drawBorder: false },
-                        ticks: { color: '#898781', precision: 0, font: { size: 11 } }
+                        grid: { color: '#E6E1D6', drawBorder: false },
+                        ticks: { color: '#5B6B72', precision: 0, font: { size: 11 } }
                     }
                 }
             }

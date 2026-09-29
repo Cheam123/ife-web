@@ -2,11 +2,13 @@
 
 namespace App\Console;
 
+use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 use App\Console\Commands\ClearZipStorage;
 use App\Console\Commands\ResetAppSubmitCount;
+use App\Services\ScheduledRuns;
 
 class Kernel extends ConsoleKernel
 {
@@ -36,11 +38,19 @@ class Kernel extends ConsoleKernel
         $schedule->command('task:reset-submit-count')->dailyAt('02:15');
         // Nightly: every outlet's product recommendations (a single outlet is
         // also refreshed whenever its profile or orders change).
-        $schedule->command('recommendation:refresh')->dailyAt('02:45');
+        $this->tracked($schedule->command('recommendation:refresh')->dailyAt('02:45'), 'recommendation:refresh');
         // Morning briefing for managers on the dashboard.
-        $schedule->command('digest:daily')->dailyAt('07:00');
+        $this->tracked($schedule->command('digest:daily')->dailyAt('07:00'), 'digest:daily');
         // Flags tasks at risk / overdue and pushes the new ones to managers.
-        $schedule->command('tasks:check-risk')->hourly();
+        $this->tracked($schedule->command('tasks:check-risk')->hourly(), 'tasks:check-risk');
+    }
+
+    /** Records each run's outcome for the admin Overview's System status. */
+    private function tracked(Event $event, string $command): Event
+    {
+        return $event
+            ->onSuccess(fn () => ScheduledRuns::record($command, true))
+            ->onFailure(fn () => ScheduledRuns::record($command, false));
     }
 
     /**
